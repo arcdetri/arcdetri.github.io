@@ -1,0 +1,234 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Across the Great Wall</title>
+<meta name="description" content="First steps to reach the instructions and resources for crossing the wall">
+<meta name="keywords" content="wall,china,翻墙,ubuntu">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>July 16, 2019</em></p>
+
+<h1>Across the Great Wall</h1>
+
+<p>Many of the sites needed for instructions and resources on crossing the wall are themselves behind the wall. Therefore in this post, we take our first steps to reach these instructions and resources. This post lists four possibilities. All these instructions are for a computer running Ubuntu Linux 18.04.</p>
+
+<h2>FanQiangDang (翻墙党)</h2>
+
+<p>FanQiangDang (翻墙党) contains tutorials and free public-interest servers. The subjects covered include airport recommendations, free over-the-wall software, free Shadowsocks nodes, ShadowsocksR nodes, and V2Ray nodes, over-the-wall tips, free trials, network security, and so on.</p>
+
+<p>For now, the site can still be reached simply by editing your <code>/etc/hosts</code> file. You can do this as follows. Open a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>). Open the hosts file in an editor:</p>
+
+<p class="terminal"><code>sudo vi /etc/hosts</code></p>
+
+<p>At the bottom of the file, press the <strong>o</strong> key on your computer keyboard to open a line for input.</p>
+
+<p>Insert the line:</p>
+
+<p class="terminal"><code>104.16.248.1 fanqiangdang.com</code></p>
+
+<p>Press the <strong>Esc</strong> key on your keyboard to escape from input mode.</p>
+
+<p>Type <code>:wq</code> and press <strong>Enter</strong> to write the file to disk and quit the editor.</p>
+
+<p>Then open Firefox and visit <a href="https://fanqiangdang.com" target="_blank">https://fanqiangdang.com</a>.</p>
+
+<h2>Lantern (蓝灯)</h2>
+
+<p>Lantern (蓝灯) is a free and open-source, peer-to-peer, Internet censorship circumvention tool, intended to be used for casual web browsing. It provides a way to bypass state-sanctioned filtration through a network of trusted users, though it is not an anonymity tool like Tor (see below). Using Lantern, users in countries having free Internet access share their bandwidth with those who are in countries where the network is partly blocked. Network connections will be dispersed between multiple computers running Lantern so it will not put undue stress on a single connection or computer.</p>
+
+<p>The official site at <a href="https://getlantern.org" target="_blank">https://getlantern.org</a> is blocked by the wall. However, the binaries are mirrored on Github at <a href="https://github.com/getlantern/lantern-binaries" target="_blank">https://github.com/getlantern/lantern-binaries</a>. The newest version is version 5.50.</p>
+
+<p>To install Lantern, open Firefox, and download <code>lantern-installer-64-bit.deb</code> from the above page.</p>
+
+<p>Open a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>). Change into your <code>Downloads</code> folder:</p>
+
+<p class="terminal"><code>cd ~/Downloads</code></p>
+
+<p>Install the package:</p>
+
+<p class="terminal"><code>sudo dpkg -i lantern-installer-64-bit.deb</code></p>
+
+<h2>Tor</h2>
+
+<p>The Tor Project site at <a href="https://www.torproject.org" target="_blank">https://www.torproject.org</a> is blocked, but you can find a mirror to download the Tor Browser at <a href="https://github.com/TheTorProject/gettorbrowser/releases" target="_blank">https://github.com/TheTorProject/gettorbrowser/releases</a>. This repository has not been updated recently, and it contains Tor Browser version 8.0.2. Currently the latest version on the official site is Tor Browser version 8.5.4. Tor Browser is available for Linux in both en-US and zh-CN versions.</p>
+
+<p>Open Firefox, and visit <a href="https://github.com/TheTorProject/gettorbrowser/releases" target="_blank">https://github.com/TheTorProject/gettorbrowser/releases</a>. Download either <code>tor-browser-linux64-8.0.2_zh-CN.tar.xz</code> or <code>tor-browser-linux64-8.0.2_en-US.tar.xz</code>, depending on your language preference. We will use the example of <code>tor-browser-linux64-8.0.2_en-US.tar.xz</code>. 
+
+<p>Click the file name. Select <strong>Save File</strong>, and click <strong>OK</strong>. It is a large download (over 70 MB). When the download is complete, close Firefox.</p>
+
+<p>Open a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>), and change directory into your <code>Downloads</code> folder:
+
+<p class="terminal"><code>cd ~/Downloads</code></p>
+
+<p>Enter the <code>ls</code> for list command:</p>
+
+<p class="terminal"><code>ls</code></p>
+
+<p>You should see your downloaded archive file in there. Extract the archive by entering the command:
+
+<p class="terminal"><code>tar -xvf tor-browser-linux64-8.0.2_en-US.tar.xz</code></p>
+
+If you now repeat the <code>ls</code> command, you will see that <code>tar -xvf</code> has created a new directory named <code>tor-browser_en-US</code>. Change into this directory by issuing the command:
+
+<p class="terminal"><code>cd tor-browser_en-US</code></p>
+
+This directory contains an executable script named <code>start-tor-browser.desktop</code>. Execute this script:
+
+<p class="terminal"><code>./start-tor-browser.desktop</code></p>
+
+<p>After 10 seconds or so, the initial Tor screen appears. Tor is blocked in China, so a special configuration is needed.</p>
+
+<ol>
+<li>Click the button <strong>Configure</strong>.</li>
+<li>Check the box <strong>Tor is censored in my country</strong>.</li>
+<li>An option automatically appears, <strong>Select a built-in bridge</strong>.</li>
+<li>Select the option <strong>meek-azure (works in China)</strong>.</li>
+<li>Click <strong>Connect</strong>.</li>
+<li>You will see a message telling you to wait. It may take several minutes for Tor Browser to connect to the Tor network.</li>
+<li>After a successful connection, the Tor Browser launches.</li>
+<li>In the Tor Browser, visit <a href="https://check.torproject.org" target="_blank">https://check.torproject.org</a></li>
+<li>Wait while Tor Browser connects to the site.</li>
+<li>You should see a message: "Congratulations. This browser is configured to use Tor."</li>
+<li>If you change the language, the URL becomes <a href="https://check.torproject.org/?lang=zh_CN" target="_blank">https://check.torproject.org/?lang=zh_CN</a>, and the message reads 恭喜。该浏览器已配置为使用 Tor 网络。</li>
+</ol>
+
+<p>In the launcher on the left, right-click on the Tor Browser icon, and select <strong>Add to Favorites</strong>. When you close Tor Browser, it will now remain in the launcher for future use.</p>
+
+<h2>Program-Think Downloads</h2>
+
+<p>BTSync (now called Resilio Sync) is a proprietary peer-to-peer file synchronization tool. Its use for downloading GFW tools is explained in two blog posts:
+
+<ul>
+
+<li><a href="https://program-think.blogspot.com/2017/08/GFW-Resilio-Sync.html" target="_blank">聊聊 GFW 如何封杀 Resilio Sync（BTSync）？以及如何【免翻墙】继续使用？</a></li>
+
+<li><a href="https://program-think.blogspot.com/2015/01/BitTorrent-Sync.html" target="_blank">扫盲 BTSync（Resilio Sync）——不仅是同步利器，而且是【分布式】网盘</a></li>
+
+</ul>
+
+To use this approach, first create a directory to sync. Open a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>), and issue the command:
+
+<p class="terminal"><code>mkdir ~/Downloads/program-think</code></p>
+
+<p>The posts on the Program-Think blog describe a problem in that BTSync trackers are blocked in China. We therefore need to enable the Distributed Hash Table (DHT) functionality of BTSync. This is only available in certain versions of BTSync. Version 1.4.111 was the last version that was both free and supported DHT enabling.</p>
+
+<p>The regular executables assume you have a device running glibc 2.24 and later. There are special executables for older devices running glibc 2.23 and before. Each executable comes in a 32-bit (i386) and a 64-bit (x64) edition. You can check which version of glibc you have by opening a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>) entering the command:
+
+<p class="terminal"><code>ldd --version</code></p>
+
+<p>Ubuntu 18.04 should return a version of 2.27, so we are good to use the regular 64-bit version of BTSync 4.1.111. This download is named <code>btsync_x64-1.4.111.tar.gz</code>.</p>
+
+<p>Open Firefox, and download the archive of your choice:</p>
+
+<p class="terminal"><a href="https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/btsync_glibc23_i386-1.4.111.tar.gz" target="_blank"><code>btsync_glibc23_i386-1.4.111.tar.gz</code></a></p>
+
+<p class="terminal"><a href="https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/btsync_glibc23_x64-1.4.111.tar.gz" target="_blank"><code>btsync_glibc23_x64-1.4.111.tar.gz</code></a></p>
+
+<p class="terminal"><a href="https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/btsync_i386-1.4.111.tar.gz" target="_blank"><code>btsync_i386-1.4.111.tar.gz</code></a></p>
+
+<p class="terminal"><a href="
+https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/btsync_x64-1.4.111.tar.gz" target="_blank"><code>btsync_x64-1.4.111.tar.gz</code></a></p>
+
+<p>Note: For Windows 64-bit and Windows 32-bit users, the following are also available:</p>
+
+<p class="terminal"><a href="
+https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/BTSync_x64-1.4.111.exe" target="_blank"><code>BTSync_x64-1.4.111.exe</code></a></p>
+
+<p class="terminal"><a href="
+https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/BTSync-1.4.111.exe" target="_blank"><code>BTSync-1.4.111.exe</code></a></p>
+
+<p>For Mac users, the following are also available:</p>
+
+<p class="terminal"><a href="
+https://s3.tok.ap.cloud-object-storage.appdomain.cloud/xzdl/BTSync-1.4.111.dmg" target="_blank"><code>BTSync-1.4.111.dmg</code></a></p>
+
+<p>Our choice in this example is <code>btsync_x64-1.4.111.tar.gz</code>. Select the option <strong>Save File</strong>, and click <strong>OK</strong>. Once the download is complete, close Firefox.</p>
+
+<p>Open a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>)), and change into your <code>Downloads</code> folder:
+
+<p class="terminal"><code>cd ~/Downloads</code></p>
+
+<p>Enter the <code>ls</code> for list command:</p>
+
+<p class="terminal"><code>ls</code></p>
+
+<p>You should see your download in there, which for us is named <code>btsync_x64-1.4.111.tar.gz</code>. You will also see the <code>program-think</code> directory you created a moment ago.</p>
+
+<p>Check the integrity of the file with the <code>sha256sum</code> command:</p>
+
+<p class="terminal"><code>sha256sum btsync_x64-1.4.111.tar.gz</code></p>
+
+<p>The sha256 checksums should be as follows:</p>
+
+<p class="terminal"><code>758cb2e3b21a21297a6fc46ca36999b2c7c170939b366e012af62a2ca953179c 	btsync_glibc23_i386-1.4.111.tar.gz</code></p>
+
+<p class="terminal"><code>921c47be0f60a3c88e8452a1de5252b2cbf1c8280d57a011f400d3cb9df676cc 	btsync_glibc23_x64-1.4.111.tar.gz</code></p>
+
+<p class="terminal"><code>f3b3095d5b7021157ada032040144e715621585864e979ba53a4697be8918ae3 	btsync_i386-1.4.111.tar.gz</code></p>
+
+<p class="terminal"><code>6ea03cd2f60177baca58c701b80e1abf44b7c42fc4ec5b8bcfd3b266876e832f 	btsync_x64-1.4.111.tar.gz</code></p>
+
+<p>To extract the files from the archive, issue the command:</p>
+
+<p class="terminal"><code>tar -xvzf btsync_x64-1.4.111.tar.gz</code></p>
+
+Three files are extracted. The executable itself is named <code>btsync</code>. Run this program:
+
+<p class="terminal"><code>./btsync</code></p>
+
+<p>BTSync forks a background process that listens on the default port of <code>8888</code>.</p>
+
+<p>Close the terminal. Open Firefox and visit <a href="http://127.0.0.1:8888" target="_blank"><code>http://127.0.0.1:8888</code></a>.</p>
+
+<p>On the welcome screen, check the box for the End User License Agreement (EULA). Enter your choice of a username, password, and confirm password. Click <strong>Get Started</strong>.</p>
+
+<p>A box appears, <strong>Authentication Required</strong>. This is for the username and password you chose a moment ago. When you have typed them, click <strong>OK</strong>.</p>
+
+<p>If you want to change the language of the interface, click the gear icon, select <strong>Preferences</strong>, and change the <strong>Language</strong> as you wish.</p>
+
+<p>Now click the add key icon. Add the program-think key:</p>
+
+<p class="terminal"><code>BTLZ4A4UD3PEWKPLLWEOKH3W7OQJKFPLG</code></p>
+
+<p>Click <strong>Next</strong>. Choose your folder, <code>/home/yourusername/Downloads/program-think</code>. Click <strong>Add</strong>.</p>
+
+<p>Now select the row for the folder you created a few moments ago, e.g., <code>/home/yourusername/Downloads/program-think</code>. Click the three dots at the end of the row, and select <strong>Preferences</strong>. These are <em>folder-specific</em> preferences.</p>
+
+<ul>
+<li>Uncheck the box for <strong>Search LAN</strong>.</li>
+<li>Check the box for <strong>Search DHT network</strong>.</li>
+<li>Uncheck the box for <strong>Store delete files in folder archive</strong>.</li>
+</ul>
+
+<p>Close the folder-specific Preferences box.</p>
+
+<p>The <strong>Status</strong> column shows that the folder is in status <strong>Receiving</strong>. When the sync is complete, you will see these contents in your <code>program-think</code> subdirectory within your <code>Downloads</code> directory:</p>
+
+<ul>
+<li>BTSync</li>
+<li>I2P</li>
+<li>TOR</li>
+<li>VPNGate</li>
+<li>__所有电子书的清单__.html (list of all ebooks)</li>
+<li>__所有电子书目录的密钥__.txt (key to all ebook directories)</li>
+<li>无界 (Ultrasurf)</li>
+<li>自由门 (Freegate)</li>
+<li>蓝灯 (Lantern)</li>
+<li>赛风 (Psiphon)</li>
+<ul>
+
+</div>
+
+</body>
+</html>

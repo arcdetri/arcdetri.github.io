@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ubuntu on Ubuntu</title>
+<meta name="description" content="Create an Ubuntu virtual machine on an Ubuntu host using KVM.">
+<meta name="keywords" content="ubuntu,kvm,virtual,machine">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>July 17, 2019</em></p>
+
+<h1>Ubuntu on Ubuntu</h1>
+
+<p>In an <a href="install-ubuntu-18-04.html">earlier post</a>, we installed Ubuntu 18.04 on a PC that previously ran Windows. In this post, we create a virtual machine which also runs Ubuntu.</p>
+
+<h2>Install Virtualization on Host</h2>
+
+<p>Before you can do this, you must assure yourself that your host machine is capable of supporting virtualization. This technology is called Virtual Machine Extensions (vmx) on Intel CPUs and Secure Virtual Machine (svm) on AMD CPUs. Determine whether these CPU flags are present by opening a terminal (<strong>Ctrl</strong>+<strong>Alt</strong>+<strong>t</strong>) and issuing the command:</p>
+
+<p class="terminal"><code>egrep '(vmx|svm)' /proc/cpuinfo</code></p>
+
+<p>On some computer models, although virtualization is supported by the CPU, it must also be enabled in the BIOS (UEFI). Instructions for reaching the BIOS vary from manufacturer to manufacturer and from model to model. Generally you must tap a specified key just after rebooting while the machine performs its power-on self-test.</p>
+
+<p>When you are sure that your computer will support KVM, you can install the packages:</p>
+
+<ul>
+<li><strong>qemu-kvm</strong> Quick Emulator (QEMU) for virtualization</li>
+<li><strong>libvirt-bin</strong> programs for the libvirt library</li>
+<li><strong>bridge-utils</strong> utilities for bridged networking</li>
+<li><strong>virt-manager</strong> graphical user interface (GUI) for managing virtual machines</li>
+</ul>
+
+<p>To install these packages, issue the command:</p>
+
+<p class="terminal"><code>sudo apt install qemu-kvm libvirt-bin bridge-utils virt-manager</code></p>
+
+<p>To allow yourself to manage virtual machines as a non-root user, add yourself to the relevant groups:</p>
+
+<p class="terminal"><code>sudo usermod -a -G libvirt,libvirt-qemu yourusernamegoeshere</code></p>
+
+<p>You will need to log out and log in again for the group changes to be effective.</p>
+
+<p>Now download the ISO file for the most recent Long Term Support (LTS) version of Ubuntu Desktop from the <a href="https://ubuntu.com/" target="_blank">Ubuntu website</a>. In the case of a virtual machine, there is no need to burn the ISO file to a USB memory stick. It can remain as an ISO file. It will have a name that resembles <code>ubuntu-18.04.2-desktop-amd64.iso</code>.</p>
+
+<p>From the Ubuntu applications menu, search for and launch <strong>Virtual Machine Manager</strong>. Right click on the line for the <strong>QEMU/KVM</strong> connection. Select <strong>Details</strong>. Check the <strong>Virtual Networks</strong> tab for the <code>virbr0</code> virtual network in state <strong>Active</strong>, with autostart <strong>On Boot</strong>. Then close the connection details window.</p>
+
+<h2>Create Ubuntu Guest</h2>
+
+<p>Now create your new virtual machine.</p>
+
+<ol>
+<li>On the <strong>File</strong> menu, select <strong>New Virtual Machine</strong>.</li>
+<li>Choose <strong>Local install media</strong>. Click <strong>Forward</strong>.</li>
+<li>For the ISO image, click <strong>Browse</strong>.</li>
+<li>Click <strong>Browse Local</strong>.</li>
+<li>In your <code>Downloads</code> directory, select your Ubuntu ISO file, and click <strong>Open</strong>.</li>
+<li>The Virtual Machine Manager automatically detects that this is Linux Ubuntu 18.04 LTS. Click <strong>Forward</strong>.</li>
+<li>Choose 2048 MB of RAM. Choose either 1 or 2 CPUs, depending on how many you have available. You must not use all your CPUs for the virtual machine! Click <strong>Forward</strong>.</li>
+<li>Make the disk image size 15 GB, or more if you think you will need more. Click <strong>Forward</strong>.</li>
+<li>Give the guest machine a name, e.g. <code>guest</code>. Click <strong>Finish</strong>.</li>
+</ol>
+
+<p>The Ubuntu installer then launches. Installing Ubuntu on the guest will be very similar to when you installed Ubuntu on the host.</p>
+
+<ol>
+
+<li>The first screen offer the choice between trying Ubuntu and installing Ubuntu. You can change the installer language in the left pane. When you have made your choice, click <strong>Install Ubuntu</strong>.</li>
+
+<li>Next, choose your keyboard layout, and click <strong>Continue</strong>.</li>
+
+<li>On the screen for updates and other software, we want the host to be as minimal as possible. Select <strong>Minimal Installation</strong>. Uncheck <strong>Download updates while installing Ubuntu</strong>. Check the option to install third party or proprietary graphics and wifi software. Click <strong>Continue</strong>.</li>
+
+<li>The installation type will normally be the one that erases the disk and installs Ubuntu. If you want full disk encryption, check the box to encrypt the new Ubuntu installation for security. Click <strong>Install Now</strong>.</li>
+
+<li>If you chose to encrypt the new Ubuntu installation, the next screen will ask you to choose a security key for disk encryption. You will need to enter this security key, as well as your normal login password, every time you start Ubuntu. Click <strong>Install Now</strong>.</li>
+
+<li>When you are asked if you want to write these changes to disk, assuming you understand the effects of this, click <strong>Continue</strong>.</li>
+
+<li>The <strong>Where are you</strong> screen asks you to pick a timezone from a world map. When you have done so, click <strong>Continue</strong>.</li>
+
+<li>The next screen asks you for your name, your computer name, your username, and your password. When you have filled in these fields, click <strong>Continue</strong>.</li>
+
+<li>The installation now begins. This can take an hour or more, depending on your computer.</li>
+
+<li>At the end of the installation, you are prompted to click the button <strong>Restart Now</strong>.</li>
+
+</ol>
+
+<p>In Virtual Machine Manager, do <strong>View</strong> then <strong>Details</strong>. Select IDE CD ROM 1. You should see your Ubuntu ISO. Click <strong>Disconnect</strong>. Then do <strong>Virtual Machine</strong> &gt; <strong>Shut Down</strong> &gt; <strong>Force Off</strong>.</p>
+
+<p>Press the green start arrow for your virtual machine. The Ubuntu guest machine now boots for the first time.</p>
+
+<p>Once the reboot is done, you are prompted to click on your username and enter the password you chose during installation.</p>
+
+<p>There are some initial <strong>What's new in Ubuntu</strong> screens to click through the first time you use a new system. When asked if you want to send information to Canonical, select <strong>No</strong>, and press <strong>Next</strong>. At the end of the what's new screens, click <strong>Done</strong>.</p>
+
+<p>Open Ubuntu settings, and go to the <strong>Privacy</strong> tab.</p>
+
+<ul>
+
+<li>Turn off <strong>Usage & History</strong>.</li>
+
+<li>Turn on <strong>Purge Trash & Temporary Files</strong>, and set both to automatically purge after 1 hour.</li>
+
+<li>Turn off <strong>Connectivity Checking</strong> unless you want to connect to a network that requires periodic keep-alive packets.</li>
+
+</ul>
+
+<p>Open the applications menu and search for <strong>Software &amp; Updates</strong>.</p>
+
+<ol>
+
+<li>Select the <strong>Updates</strong> tab.</li> 
+
+<li>Change <strong>Automatically check for Updates</strong> to <strong>Never</strong>.</li>
+
+<li>You will need to enter your password and click <strong>Authenticate</strong>.</li>
+
+<li>Click <strong>Close</strong>.</li>
+
+</ol>
+
+<p>Now open the terminal emulator (Ctrl+Alt+t) and completely update the system by issuing these commands:</p>
+
+<p class="terminal"><code>sudo apt update</code></p>
+<p class="terminal"><code>sudo apt upgrade</code></p>
+<p class="terminal"><code>sudo apt dist-upgrade</code></p>
+<p class="terminal"><code>sudo apt autoremove</code></p>
+
+<p>Set up the firewall with the commands that follow. All unsolicited input will be blocked. We will, though, allow SSH on port 22 from the host machine.</p>
+
+<p class="terminal"><code>sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT</code></p>
+<p class="terminal"><code>sudo iptables -A INPUT -i lo -j ACCEPT</code></p>
+<p class="terminal"><code>sudo iptables -A INPUT -p tcp --dport 22 -s 192.168.122.0/24 -j ACCEPT</code></p>
+<p class="terminal"><code>sudo iptables -P INPUT DROP</code></p>
+
+<p>If your network is IPv6 enabled, also close the IPv6 firewall:</p>
+
+<p class="terminal"><code>sudo ip6tables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT</code></p>
+<p class="terminal"><code>sudo ip6tables -A INPUT -i lo -j ACCEPT</code></p>
+<p class="terminal"><code>sudo ip6tables -P INPUT DROP</code></p>
+
+<p>Persist these changes after reboots:</p>
+
+<p class="terminal"><code>sudo apt install iptables-persistent</code></p>
+
+<p>Install and start the SSH server on the guest to allow connections from the host:</p>
+
+<p class="terminal"><code>sudo apt install openssh-server</code></p>
+
+<p>Close the terminal emulator window.</p>
+
+<p>We will now harden the security options on Firefox. Open Firefox, click the Firefox hamburger menu, and select <strong>Preferences</strong>.</p>
+
+<ul>
+
+<li>On the <strong>Home</strong> page:
+<ul>
+<li>Set both the home page and the new tabs page to blank.</li>
+<li>Uncheck all the home page content options.</li>
+</ul>
+</li>
+
+<li>On the <strong>Search</strong> page:
+<ul>
+<li>Uncheck search suggestions.</li>
+</ul>
+</li>
+
+<li>On the <strong>Privacy & Security</strong> page:
+<ul>
+<li>Check the option to delete cookies and site data when Firefox closes.</li>
+<li>Uncheck the option to save logins and passwords for websites.</li>
+<li>Set the <strong>History</strong> option to never remember history. This causes Firefox to restart.</li>
+<li>Once you have reopened Firefox, go back to where you were, and uncheck all the <strong>Address Bar</strong> suggestions.</li>
+<li>Uncheck the options for <strong>Firefox Data Collection and Use</strong>.</li>
+<li>Uncheck the options for <strong>Deceptive Content and Dangerous Software Protection</strong>, since this may send out data on the Internet.</li>
+</ul>
+</li>
+
+</ul>
+
+<p>To disable WebRTC:</p>
+<ol>
+<li>Enter <code>about:config</code> in the address bar, and press <strong>Enter</strong>.</li> 
+<li>Click the button <strong>I accept the risk</strong>.</li>
+<li>Type <code>media.peerconnection.enabled</code> in the search bar, and press <strong>Enter</strong>.</li>
+<li>Double-click the row for <code>media.peerconnection.enabled</code>. The value changes from <strong>true</strong> to <strong>false</strong>.</li>
+<li>WebRTC is now disabled in Firefox.</li>
+</ol>
+
+<p>You can add further privacy and security extensions to Firefox from the <strong>Add-ons</strong> menu. Some useful ones to add are:</p>
+
+<ul>
+<li>NoScript</li>
+<li>uBlock Origin</li>
+</ul>
+
+</div>
+
+</body>
+</html>
