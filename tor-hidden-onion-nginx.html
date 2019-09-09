@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create Tor Hidden Onion Service Using Nginx</title>
+<meta name="description" content="How to create a Tor hidden onion service using nginx">
+<meta name="keywords" content="tor,hidden,onion,service,nginx">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>September 9, 2019</em></p>
+
+<h1>Create Tor Hidden Onion Service Using Nginx</h1>
+
+<p>This post demonstrates how to create a Tor hidden onion service using the Nginx web server. This tutorial is for a server running Debian 10, also known as Debian Buster.</p>
+
+<p>All commands are issued as <code>root</code>.</p>
+
+<p><img src="images/torhiddenonionnginx.png" alt="Tor hidden onion nginx site"></p>
+
+<h2>Install Firewall</h2>
+
+<p>Update system:</p>
+
+<p class="terminal"><code>apt update<br>
+apt upgrade</code></p>
+
+<p>Install, enable, and start nftables:</p>
+
+<p class="terminal"><code>apt install nftables<br>
+systemctl enable nftables<br>
+systemctl start nftables</code></p>
+
+<p>Add a rule to accept all related and established traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input ct state related,established counter accept</code></p>
+
+<p>Add a rule to accept loopback interface traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input iif lo counter accept</code></p>
+
+<p>Open access to port 22, which is the SSH port:</p>
+
+<p class="terminal"><code>nft add rule inet filter input tcp dport 22 counter accept</code></p>
+
+<p>Drop all other traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input counter drop</code></p>
+
+<p>Note that we do <em>not</em> need to open port 80, the HTTP port. This is because of the way onion services communicate with clients via rendezvous points.</p>
+
+<p>Persist the firewall across reboots:</p>
+
+<p class="terminal"><code>nft list ruleset > /etc/nftables.conf</code></p>
+
+<h2>Install Web Server</h2>
+
+<p>Install the Nginx web server:</p>
+
+<p class="terminal"><code>apt install nginx</code></p>
+
+<p>This installs Nginx version 1.14.2.</p>
+
+<p>Edit the main Nginx configuration file:</p>
+
+<p class="terminal"><code>vi /etc/nginx/nginx.conf</code></p>
+
+<p>In the main <code>http</code> block, uncomment the line that prevents display of revealing information:</p>
+
+<p class="terminal"><code>server_tokens off;</code></p>
+
+<p>Add a line to prevent someone presenting your site's content in a frame on some other site:</p>
+
+<p class="terminal"><code>add_header X-Frame-Options "SAMEORIGIN";</code></p>
+
+<p>Add a line to reduce the possibility of cross-site scripting:</p>
+
+<p class="terminal"><code>add_header X-XSS-Protection "1; mode=block";</code></p>
+
+<p>Add lines to limit buffer sizes, thus reducing the potential for buffer overflow attacks:</p>
+
+<p class="terminal"><code>client_body_buffer_size 1k;<br>
+client_header_buffer_size 1k;<br>
+client_max_body_size 1k;<br>
+large_client_header_buffers 2 1k;</code></p>
+
+<p>Write the Nginx configuration file to disk, and quit the editor.</p>
+
+<p>Edit the default host configuration file:</p>
+
+<p class="terminal"><code>vi /etc/nginx/sites-available/default</code></p>
+
+<p>Comment out the lines that make Nginx listen on TCP port 80, and add a line that makes Nginx listen on a Unix socket:</p>
+
+<p class="terminal"><code>server {<br>
+#listen 80 default_server;<br>
+#listen [::]:80 default_server;<br>
+listen unix:/var/run/nginx.sock;</code></p>
+
+<p>Still within the <code>server</code> block, restrict unnecessary HTTP request types by adding the lines:</p>
+
+<p class="terminal"><code>if ($request_method !~ ^(GET|HEAD|POST)$ )<br>
+{<br>
+return 405;<br>
+}</code></p>
+
+<p>Write the default host configuration file to disk, and quit the editor.</p>
+
+<p>Edit the system service file:</p>
+
+<p class="terminal"><code>vi /lib/systemd/system/nginx.service</code></p>
+
+<p>In the <code>[Service]</code> block, add a line to contain Nginx within its own private network, with only a loopback interface:</p>
+
+<p class="terminal"><code>PrivateNetwork=yes</code></p>
+
+<p>Write the Nginx service file to disk, and quit the editor.</p>
+
+<p>Restart the web server with the new configuration:</p>
+
+<p class="terminal"><code>systemctl daemon-reload<br>
+systemctl restart nginx<br>
+systemctl status nginx</code></p>
+
+<h2>Install Tor</h2>
+
+<p>Now we install Tor and create the hidden service.</p>
+
+<p>Install the prerequisite package:</p>
+
+<p class="terminal"><code>apt install apt-transport-https</code></p>
+
+<p>Add the Tor repositories to your Advanced Packaging Tool (APT) sources list:</p>
+
+<p class="terminal"><code>vi /etc/apt/sources.list</code></p>
+
+<p>Add lines at the bottom for the Tor project repositories:</p>
+
+<p class="terminal"><code>deb https://deb.torproject.org/torproject.org buster main<br>
+deb-src https://deb.torproject.org/torproject.org buster main</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Add the GNU Privacy Guard (GPG) key used to sign the Tor packages:</p>
+
+<p class="terminal"><code>apt install gpg<br>
+apt install curl</code></p>
+<p class="terminal"><code>curl https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc | gpg --import</code></p>
+<p class="terminal"><code>gpg --export A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89 | apt-key add -</code></p>
+
+<p>Update your package lists:</p>
+
+<p class="terminal"><code>apt update</code></p>
+
+<p>Install Tor from the Tor project repository:</p>
+
+<p class="terminal"><code>apt install tor deb.torproject.org-keyring</code></p>
+
+<p>Edit the main Tor configuration file:</p>
+
+<p class="terminal"><code>vi /etc/tor/torrc</code></p>
+
+<p>Completely replace its original contents with the following:</p>
+
+<p class="terminal"><code>Log notice file /var/log/tor/log<br>
+RunAsDaemon 1<br>
+DataDirectory /var/lib/tor<br>
+HiddenServiceDir /var/lib/tor/<em>hiddenservicename</em>/<br>
+HiddenServicePort 80 unix:/var/run/nginx.sock</code></p>
+
+<p>Instead of literally putting <em>hiddenservicename</em> in the above, you should put a meaningful name of your own choosing.</p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Restart Tor for this change:</p>
+
+<p class="terminal"><code>systemctl restart tor</code></p>
+
+<p>Check that Tor is up and running:</p>
+
+<p class="terminal"><code>tail /var/log/tor/log</code></p>
+
+<p>You should see a message:</p>
+
+<p class="terminal"><code>Bootstrapped 100% (done): Done</code></p>
+
+<p>To determine your onion URL, issue the command:</p>
+
+<p class="terminal"><code>cat /var/lib/tor/<em>hiddenservicename</em>/hostname</code></p>
+
+<p>Instead of literally putting <em>hiddenservicename</em>, you should put the name you previously chose in the above.</p>
+
+<p>You will get a response containing a domain name of 56 characters, suffixed by <code>.onion</code>. It will look like this:</p>
+
+<p class="terminal"><code>uvbmrlw3vmbvz3q7cmf3pff777mavz3o4gwtgc6xu7zsvgvfuslcoryd.onion</code></p>
+
+<p>You should also save the keys somewhere safe, where only you have access to them. The file names are <code>hs_ed25519_public_key</code> and <code>hs_ed25519_secret_key</code>.</p>
+
+<p>Change the server name by editing the default site configuration file:</p>
+
+<p class="terminal"><code>vi /etc/nginx/sites-available/default</code></p>
+
+<p>Amend the <code>server_name _;</code> line to read:</p>
+
+<p class="terminal"><code>server_name uvbmrlw3vmbvz3q7cmf3pff777mavz3o4gwtgc6xu7zsvgvfuslcoryd.onion;</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Restart Nginx:
+
+<p class="terminal"><code>systemctl stop nginx<br>
+rm /var/run/nginx.sock<br>
+systemctl start nginx</code></p>
+
+<h2>Test</h2>
+
+<p>You may have to wait ten minutes or so for your hidden service onion address to propagate.</p>
+
+<p>Now, to test your work so far, download and install the Tor Browser from the Tor project site at <a href="https://www.torproject.org" target="_blank">https://www.torproject.org</a>.</p>
+
+<p>In your Tor Browser, visit your onion site. For example:</p>
+
+<p class="terminal"><code>uvbmrlw3vmbvz3q7cmf3pff777mavz3o4gwtgc6xu7zsvgvfuslcoryd.onion</code></p>
+
+<p>You should see the <strong>Welcome to Nginx!</strong> page.</p>
+
+</div>
+
+</body>
+</html>
