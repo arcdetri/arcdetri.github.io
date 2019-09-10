@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install Debian 10 XFCE</title>
+<meta name="description" content="How to install Debian 10 XFCE on a computer that was previously running Windows.">
+<meta name="keywords" content="debian,10,buster,xfce,install,windows">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>September 11, 2019</em></p>
+
+<h1>Install Debian 10 XFCE</h1>
+
+<p>Here is how to install Debian 10 "Buster" on a computer that was previously running Windows. This process will completely overwrite your Windows operating system and all your files. Various options are available in the Debian installer. For improved performance, this post chooses XFCE desktop. For extra privacy, disk encryption is selected during the install.</p>
+
+<h2>Get Ready</h2>
+
+<p>Before you begin the installation, you will need:
+
+<ul>
+<li>A USB memory stick of at least 4 GB. (You can alternatively use a writable DVD if your computer has a DVD drive.)</li>
+<li>Download the ISO file for the first DVD for Debian from the <a href="https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/" target="_blank">Debian website</a>. It is almost 4 GB in size.
+Normally you need only the first DVD ISO. You can install any extra packages you need from the repositories after your initial installation.</li>
+<li>Download and install a tool such as <a href="https://www.balena.io/etcher" target="_blank">balena Etcher</a> for creating a bootable USB stick from an ISO file.</li>
+<li>Use your tool (e.g. <a href="https://www.balena.io/etcher" target="_blank">balena Etcher</a>) to burn the ISO file to the USB memory stick.</li>
+</ul>
+
+<h2>Boot from Installer</h2>
+
+<p>Once you have the bootable USB stick, insert it into your computer. Power on the computer. You may need to enter the machine's BIOS (UEFI) on start-up to get it to boot from a USB stick. This often requires that, during the computer's power-on self-test (POST), you tap a key such as DEL, F2, F12, or some other key. The key to tap depends on your computer manufacturer and model.</p>
+<p>The Debian installer then launches.</p>
+
+<h2>Step through Debian Installer</h2>
+
+<ol>
+<li>The first screen offers you a choice between Graphical install, Install, Advanced options, Accessible dark contrast installer menu, Help, and Install with speech synthesis. Select the default of <strong>Graphical install</strong>, and press <strong>Enter</strong> on your computer keyboard.</li>
+<li>On the next screen, select the language for the installation process, for example, <strong>English</strong>. When you have made your choice, click <strong>Continue</strong>.</li>
+<li>Select your location, for example, <strong>Hong Kong</strong>. When you have made your choice, click <strong>Continue</strong>.</li>
+<li>Next, choose your keyboard layout, for example, <strong>American English</strong>. and click <strong>Continue</strong>.</li>
+<li>The installer attempts to configure your networking. It then asks for a name for this system. Enter a name of your choice, such as <code>host</code>. Click <strong>Continue</strong>.</li>
+<li>For a domain name for a home system, you can enter a name of your choice, such as <code>network.home</code>. Click <strong>Continue</strong>.</li>
+<li>Enter a root password twice, and click <strong>Continue</strong>.</li>
+<li>Enter an account name for a non-root user, for example, <code>arcdetri</code>, and click <strong>Continue</strong>.</li>
+<li>Enter a username for the non-root user, for example, <code>arcdetri</code> again, and click <strong>Continue</strong>.</li>
+<li>Enter a password for the non-root user twice, and click <strong>Continue</strong>.</li>
+<li>For the partitioning method, select <strong>Guided - use entire disk and set up encrypted LVM</strong>. Click <strong>Continue</strong>.</li>
+<li>Select the disk to partition, and click <strong>Continue</strong>.</li>
+<li>Select <strong>All files in one partition (recommended for new users)</strong>. Click <strong>Continue</strong>.</li>
+<li>When you are asked if you want to write these changes to disk, remember that your entire Windows system and files will be erased. Assuming you understand this, select the radio button for <strong>Yes</strong>, and click <strong>Continue</strong>.</li>
+<li>The installer overwrites the disk with random data. Depending on the size of your disk, this can take a while.</li>
+<li>Enter a disk encryption password twice, and click <strong>Continue</strong>.</li>
+<li>Assuming you want to use your full disk, leave the volume group at full size, and click <strong>Continue</strong>.</li>
+<li>When asked if you want to finish partitioning and write changes to disk, click <strong>Continue</strong>.</li>
+<li>When you are asked if you want to write these changes to disk, select the radio button for <strong>Yes</strong>, and click <strong>Continue</strong>.</li>
+<li>The base system is now installed, including Linux kernel version 4.19.</li>
+<li>When asked if you have another DVD to scan, select <strong>No</strong>, and click <strong>Continue</strong>.</li>
+<li>When asked if you may want to use a network mirror for additional packages, select <strong>Yes</strong>, and click <strong>Continue</strong>.</li>
+<li>Select a mirror close to you, for example, <strong>Hong Kong</strong>. When you have made your choice, click <strong>Continue</strong>.</li>
+<li>Unless you know better, leave the default archive mirror selected, and click <strong>Continue</strong>.</li>
+<li>Unless you have a proxy server, leave HTTP proxy information blank, and click <strong>Continue</strong>.</li>
+<li>When you are asked if you want to participate in the package usage survey, select the radio button for <strong>No</strong>, and click <strong>Continue</strong>.</li>
+<li>On the software selection screen, uncheck all boxes. Then check only <strong>XFCE</strong> and <strong>standard system utilities</strong>. Click <strong>Continue</strong>.</li>
+<li>When the system has been installed, you are asked if you want to install the GRUB boot loader. Select <strong>Yes</strong>, and click <strong>Continue</strong>.</li>
+<li>Select your hard disk device, and click <strong>Continue</strong>.</li>
+<li>At the end of the installation, you are prompted to remove the installation media (USB or DVD), and click the button <strong>Continue</strong>.</li>
+</ol>
+
+<h2>First Boot</h2>
+
+<p>The Debian machine now boots for the first time.</p>
+<p>You will need to enter the disk encryption password before the boot process can proceed.</p>
+<p>Once the boot is done, you are prompted to enter your username (e.g., <code>arcdetri</code>) and the password you chose during installation. Click <strong>Log In</strong>.</p>
+<p>On the first start of the panel, click <strong>Use default config</strong>.</p>
+<p>The XFCE desktop appears.</p>
+<p><img src="images/debian-10-xfce.png" alt="Debian 10 XFCE"></p>
+
+<h2>Add Yourself to the Sudo Group</h2>
+
+<p>Open the terminal emulator. You can either do this from the <strong>Application</strong> &gt; <strong>Terminal Emulator</strong> menu item, or from the terminal emulator icon at the bottom of the screen.</p>
+<p>Switch to the root user:</p>
+<p class="terminal"><code>su -</code></p>
+<p>Add your non-root user to the sudo group by issuing the command:</p>
+<p class="terminal"><code>usermod -a -G sudo <em>username</em></code></p>
+<p>replacing <code><em>username</em></code> by your non-root user name.</p>
+<p>Exit your session as root:</p>
+<p class="terminal"><code>exit</code></p>
+<p>Close the terminal emulator. Log out by clicking on your username at the top right of the screen, and selecting <strong>Log Out</strong>. Select <strong>Log Out</strong> again on the next screen.</p>
+<p>Now log back in as your non-root user. By logging out and logging back in, your membership in the sudo group becomes effective.</p>
+
+<h2>Update System</h2>
+
+<p>Open the terminal emulator from the <strong>Application</strong> &gt; <strong>Terminal Emulator</strong> menu item or from the terminal emulator icon at the bottom of the screen.</p>
+<p>Edit your package sources list:</p>
+<p class="terminal"><code>sudo vi /etc/apt/sources.list</code></p>
+<p>Location any lines marked <code>deb cdrom</code>. Use the editor command <code>dd</code> to delete any such lines. Write the file to disk and quit the editor with the commands:</p>
+<p class="terminal"><code>:wq</code></p>
+<p>Update the system by issuing these commands:</p>
+<p class="terminal"><code>sudo apt update</code></p>
+<p class="terminal"><code>sudo apt upgrade</code></p>
+
+<h2>Install Firewall</h2>
+
+<p>We will set up the firewall to block all unsolicited input. Install and start the firewall:</p>
+<p class="terminal"><code>sudo apt install nftables</code></p>
+<p class="terminal"><code>sudo systemctl enable nftables</code></p>
+<p class="terminal"><code>sudo systemctl start nftables</code></p>
+<p>Delete the existing input chain:</p>
+<p class="terminal"><code>sudo nft delete chain inet filter input</code></p>
+<p>Add back the input chain with a default policy of drop:</p>
+<p class="terminal"><code>sudo nft add chain inet filter input { type filter hook input priority 0\; policy drop\; }</code></p>
+<p>Add rules to accept related and established traffic, and also all traffic on the loopback interface:</p>
+<p class="terminal"><code>sudo nft add rule inet filter input ct state related,established counter accept</code></p>
+<p class="terminal"><code>sudo nft add rule inet filter input iif lo counter accept</code></p>
+<p>Persist your nftables rules:</p>
+<p class="terminal"><code>sudo su -c 'nft list ruleset > /etc/nftables.conf'</code></p>
+<p>Close the terminal emulator .</p>
+
+<h2>Improve Privacy of Firefox</h2>
+
+<p>We will now harden the security options on Firefox. Open Firefox either from the <strong>Applications</strong> &gt; <strong>Web Browser</strong> menu item, or from the Web Browser icon at the bottom of the screen.</p>
+<p>Click the Firefox hamburger menu, and select <strong>Preferences</strong>.</p>
+<ul>
+<li>On the <strong>General</strong> page:
+<ul>
+<li>Set Firefox to start with a blank page.</li>
+</ul>
+</li>
+<li>On the <strong>Search</strong> page:
+<ul>
+<li>Uncheck <strong>Provide search suggestions</strong>.</li>
+</ul>
+</li>
+<li>On the <strong>Browser Privacy</strong> page:
+<ul>
+<li>Uncheck the option to save logins and passwords for websites.</li>
+<li>Set the <strong>History</strong> option to never remember history.</li>
+<li>This causes Firefox to restart. When it has restarted, resume changing the preferences.</li>
+<li>Set Firefox to accept third-party cookies and site data <strong>Never</strong>.</li>
+<li>Uncheck all the <strong>Address Bar</strong> suggestions.</li>
+<li>Set Tracking Protection to <strong>Always</strong>.
+<li>Uncheck all options for <strong>Firefox Data Collection and Use</strong>.</li>
+<li>Uncheck all options for <strong>Deceptive Content and Dangerous Software Protection</strong>, since this may send out data on the Internet.</li>
+</ul>
+</li>
+</ul>
+<p>Disable WebRTC:</p>
+<ol>
+<li>Enter <code>about:config</code> in the address bar, and press <strong>Enter</strong>.</li> 
+<li>Click the button <strong>I accept the risk</strong>.</li>
+<li>Type <code>media.peerconnection.enabled</code> in the search bar, and press <strong>Enter</strong>.</li>
+<li>Double-click the row for <code>media.peerconnection.enabled</code>. The value changes from <strong>true</strong> to <strong>false</strong>.</li>
+<li>WebRTC is now disabled in Firefox.</li>
+</ol>
+<p>Install uBlock Origin and Privacy Badger add-ons:</p>
+<ol>
+<li>Click the Firefox hamburger menu, and select <strong>Add-ons</strong>.</li> 
+<li>Find more add-ons.</li>
+<li>Search for <code>ublock origin</code>.</li>
+<li>Add to Firefox uBlock Origin by Raymond Hill.</li>
+<li>Click <strong>Add</strong>.</li>
+<li>Click <strong>OK</strong>.</li>
+<li>Search for <code>privacy badger</code>.</li>
+<li>Add to Firefox Privacy Badger by EFF Technologists.</li>
+<li>Click <strong>Add</strong>.</li>
+<li>Click <strong>OK</strong>.</li>
+</ol>
+<p>Close Firefox once you are done configuring it.</p>
+
+</div>
+
+</body>
+</html>
