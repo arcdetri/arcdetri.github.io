@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install Whonix 15 on Linux Host Using VirtualBox</title>
+<meta name="description" content="How to install Whonix 15 on a Linux host machine using VirtualBox for virtualization">
+<meta name="keywords" content="whonix,15,linux,virtualbox">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>September 12, 2019</em></p>
+
+<h1>Install Whonix 15 on Linux Host Using VirtualBox</h1>
+<p>In this post, we install Whonix 15 on a Linux computer using VirtualBox for virtualization. Our examples are all for a recent version of Debian or Ubuntu, but if you use a different distro, you could easily adapt them.</p>
+
+<h2>Get Ready</h2>
+<p>Before you begin, you will need a host computer running a Linux distribution. If you have a host computer running Windows and you want to completely replace Windows with Linux, you can refer to the posts <a href="https://arcdetri.github.io/install-ubuntu-18-04.html" target="_blank">https://arcdetri.github.io/install-ubuntu-18-04.html</a> or <a href="https://arcdetri.github.io/install-debian-10-xfce.html" target="_blank">https://arcdetri.github.io/install-debian-10-xfce.html</a>.</p>
+<p>If you are behind the GFW, you will also need the configuration details of a ShadowsocksR server. You can either use a friend's SSR server, or you can set up one yourself. Some instructions for creating an SSR server on a VPS are given in the post
+<a href="https://arcdetri.github.io/shadowsocksr-ssr-on-ubuntu.html" target="_blank">https://arcdetri.github.io/shadowsocksr-ssr-on-ubuntu.html</a>.</p>
+<p>Before you go any further, update your existing software packages on your host computer. Open a terminal emulator and issue the commands:</p>
+<p class="terminal"><code>sudo apt update</code></p>
+<p class="terminal"><code>sudo apt upgrade</code></p>
+
+<h2>If You Are Behind GFW, Install ShadowsocksR Client on Host</h2>
+<p>The GFW blocks Tor and all public bridges. If you are behind the GFW, you can obfuscate your use of Tor using ShadowsocksR. The instructions for installing the SSR client on Linux are given in the post
+<a href="https://arcdetri.github.io/shadowsocksr-ssr-on-ubuntu.html" target="_blank">https://arcdetri.github.io/shadowsocksr-ssr-on-ubuntu.html</a>.
+The process is similar for both Debian and Ubuntu.
+Here is a short summary of the necessary commands. For comments on the purpose of these commands, see the post just linked to.</p>
+<p class="terminal"><code>sudo apt install wget zip unzip python-m2crypto libsodium23</code></p>
+<p class="terminal"><code>cd ~/Downloads</code></p>
+<p class="terminal"><code>wget https://github.com/shadowsocksrr/shadowsocksr/archive/manyuser.zip</code></p>
+<p class="terminal"><code>unzip manyuser.zip</code></p>
+<p class="terminal"><code>mv shadowsocksr-manyuser shadowsocksr</code></p>
+<p class="terminal"><code>sudo vi /etc/shadowsocks.json</code></p>
+<p>Edit the configuration JSON file to match the parameters required by your server. When you have done so, write the file to disk and quit the editor. You can then start the SSR client daemon running:</p>
+<p class="terminal"><code>cd shadowsocksr/shadowsocks</code></p>
+<p class="terminal"><code>sudo python local.py -c /etc/shadowsocks.json -d start</code></p>
+<p>Once the SSR client is running and listening on localhost port 1080, configure Firefox to proxy traffic to localhost port 1080. Again, there are more details of how to do this on the post just linked to.</p>
+
+<h2>Install VirtualBox</h2>
+<p>Install the prerequisites for VirtualBox and the Linux kernel headers for your distro with the command:</p>
+<p class="terminal"><code>sudo apt install gcc make perl linux-headers-$(uname -r)</code></p>
+<p>Now open Firefox and download VirtualBox for your Linux distro from <a href="https://www.virtualbox.org/wiki/Linux_Downloads" target="_blank">https://www.virtualbox.org/wiki/Linux_Downloads</a>. Currently the download for recent Ubuntu and Debian distros is named <code>virtualbox-6.0_6.0.12-133076~Ubuntu~bionic_amd64.deb</code>. It is about 100 MB.</p>
+<p>Also download the SHA256 checksums file from that same page. Look for the line giving the expected SHA256 checksum for your distro. In our example, that would be the line:</p>
+<p class="terminal"><code>2258c9966a4f73fa6402c42babaab4a22f217aeb013d57186f7d878776b0bcbe *virtualbox-6.0_6.0.12-133076~Ubuntu~bionic_amd64.deb</code></p>
+<p>Open a terminal emulator and issue the commands:</p>
+<p class="terminal"><code>cd ~/Downloads</code></p>
+<p class="terminal"><code>sha256sum virtualbox-6.0_6.0.12-133076~Ubuntu~bionic_amd64.deb</code></p>
+<p>You should see a result that matches the stated value. For example:</p>
+<p class="terminal"><code>2258c9966a4f73fa6402c42babaab4a22f217aeb013d57186f7d878776b0bcbe</code></p>
+<p>Once you have verified the VirtualBox download, install VirtualBox with the command:</p>
+<p class="terminal"><code>sudo dpkg -i virtualbox-6.0_6.0.12-133076~Ubuntu~bionic_amd64.deb</code></p>
+<p>You likely have dependency problems that result in errors. Resolve them with the command:</p>
+<p class="terminal"><code>sudo apt install -f</code></p>
+<p>Add your user to the vboxusers group:</p>
+<p class="terminal"><code>sudo usermod -a -G vboxusers <em>yourusername</em></code></p>
+<p>replacing <code><em>yourusername</em></code> with your actual user name.</p>
+<p>In Firefox, visit <a href="https://www.virtualbox.org/wiki/Downloads" target="_blank">https://www.virtualbox.org/wiki/Downloads</a> and download the VirtualBox Extension Pack.
+It has a name that looks like <code>Oracle_VM_VirtualBox_Extension_Pack-6.0.12.vbox-extpack</code>. It is currently about 22 MB.</p>
+<p>Launch Oracle VM VirtualBox. Go to <strong>File</strong> &gt; <strong>Preferences</strong> &gt; <strong>Extensions</strong>. Add your downloaded VirtualBox extension pack. Click <strong>Install</strong>. Read the license agreement, and click <strong>I Agree</strong>. Enter your password and click <strong>Authenticate</strong>. Click <strong>OK</strong> to close the Preferences window.</p>
+
+<h2>Download Whonix Virtual Appliance</h2>
+<p>Whonix 15 introduces unified ova downloads. Rather than separate Whonix-Gateway ™ and Whonix-Workstation ™ ova downloads, there is now only a single Whonix ova, which includes both Whonix virtual machines (VMs): Whonix-Gateway and Whonix-Workstation.</p>
+<p>To download the Whonix virtual appliance, open Firefox and visit 
+<a href="https://www.whonix.org/wiki/VirtualBox/XFCE" target="_blank">https://www.whonix.org/wiki/VirtualBox/XFCE</a>.</p>
+<p>Download the virtual appliance. This is currently named <code>Whonix-XFCE-15.0.0.4.9.ova</code>. It is about 1.6 GB.</p>
+<p>Also download the OpenPGP signature for the virtual appliance, which is currently <code>Whonix-XFCE-15.0.0.4.9.ova.asc</code>. This is just 1 kB.</p>
+
+<h2>Import Whonix Signing Key</h2>
+<p>Download the Whonix signing key (i.e. Patrick Schleizer's OpenPGP public key) from the page at <a href="https://www.whonix.org/wiki/Patrick_Schleizer" target="_blank">https://www.whonix.org/wiki/Patrick_Schleizer</a> and save it as <code>~/Downloads/patrick.asc</code>. This is 61 kB.</p>
+<p>Check the fingerprint before you do the actual import. Open a terminal emulator and issue the commands::</p>
+<p class="terminal"><code>cd ~/Downloads</code></p>
+<p class="terminal"><code>gpg --keyid-format long --import --import-options show-only --with-fingerprint patrick.asc</code></p>
+<p>Verify the output. The output should look like the following:</p>
+<p class="terminal"><code>pub   rsa4096/8D66066A2EEACCDA 2014-01-16 [SC] [expires: 2021-04-17]<br>
+Key fingerprint = 916B 8D99 C38E AF5E 8ADC  7A2A 8D66 066A 2EEA CCDA<br>
+uid                            Patrick Schleizer &lt;adrelanos@riseup.net&gt;<br>
+sub   rsa4096/3B1E6942CE998547 2014-01-16 [E] [expires: 2021-04-17]<br>
+sub   rsa4096/10FDAC53119B3FD6 2014-01-16 [A] [expires: 2021-04-17]<br>
+sub   rsa4096/CB8D50BB77BB3C48 2014-01-16 [S] [expires: 2021-04-17]</code></p>
+<p>Once you have verified the fingerprint, import the signing key:</p>
+<p class="terminal"><code>gpg --import patrick.asc</code></p>
+<p>The output should confirm that 1 key was processed and 1 key was imported.</p>
+
+<h2>Verify Whonix Download</h2>
+<p>Start the cryptographic verification of the Whonix virtual appliance. It can take several minutes.</p>
+<p class="terminal"><code>gpg --verify-options show-notations --verify Whonix-XFCE-15.0.0.4.9.ova.asc Whonix-XFCE-15.0.0.4.9.ova</code></p>
+<p>If the virtual appliance download is valid, the output will tell you that you have a <code>Good signature</code>.</p>
+<p>It is normal to see messages:</p>
+<p class="terminal"><code>
+gpg: WARNING: This key is not certified with a trusted signature!<br>
+gpg:          There is no indication that the signature belongs to the owner.</code></p>
+<p>If you have any doubts about the validity of the virtual appliance, consult the full instructions at <a href="https://www.whonix.org/wiki/VirtualBox/Verify_the_virtual_machine_images_using_the_command_line" target="_blank">https://www.whonix.org/wiki/VirtualBox/Verify_the_virtual_machine_images_using_the_command_line</a>.</p>
+
+<h2>Import Whonix Appliance into VirtualBox</h2>
+<p>Launch Oracle VM VirtualBox on your host. Click <strong>File</strong>, then choose <strong>Import Appliance</strong>.</p> 
+<p>Locate and select the Whonix image (<code>Whonix-XFCE-15.0.0.4.9.ova</code> in our example). Click <strong>Next</strong>.</p>
+<p>Do not change any of the default options. Just click <strong>Import</strong>.</p>
+<p>When you see the software license agreement, click <strong>Agree</strong>.</p>
+<p>Wait until <code>Whonix-XFCE-15.0.0.4.9.ova</code> has been imported. This can take several minutes.</p>
+
+<h2>Start Whonix-Gateway</h2>
+<p>In VirtualBox, select the virtual machine for Whonix-Gateway-XFCE. Click the <strong>Start</strong> button. Wait while the virtual machine starts up.</p>
+<p>Read and then dismiss the notifications.</p>
+<p>When you come to information screen 1/2, read it, select the radio button for <strong>Understood / Verstanden</strong>, and click <strong>Next</strong>.
+Again with page 2/2, read it, select the radio button for <strong>Understood / Verstanden</strong>, and click <strong>Next</strong>. Click <strong>Finish</strong>.</p>
+<p>If you are not behind a restrictive firewall, you can connect directly. Select the radio button <strong>Connnect</strong>, and click <strong>Next</strong>.</p>
+
+<h2>If You Are Behind GFW, Proxy Tor through ShadowsocksR</h2>
+<p>If you are behind the GFW, you must proxy Tor through SSR.</p>
+<p>Instead of connecting immediately, select the radio button <strong>Configure</strong>, and click <strong>Next</strong>.</p>
+<p>Leave the checkbox for Tor bridges <em>unchecked</em>, and click <strong>Next</strong>.</p>
+<p>Check the box for local proxy configuration.</p>
+<ul>
+<li>Proxy type is <strong>SOCKS5</strong>.</li>
+<li>Address is the VirtualBox host machine, which is <code>10.0.2.2</code>.</li>
+<li>Listening port is <code>1080</code>.</li>
+</ul>
+<p>The effect of using this control panel is to add a line to <code>/usr/local/etc/torrc.d/40_tor_control_panel.conf</code>:</p>
+<p class="terminal"><code>Socks5Proxy 10.0.2.2:1080</code></p>
+<p>Click <strong>Next</strong>.</p>
+<p>Click <strong>Next</strong> again.</p>
+<p>Tor bootstrapping happens. You should see messages "Tor bootstrapping done" and "Bootstrap phase: Connected to the Tor network!"</p>
+<p>Click <strong>Finish</strong>.</p>
+<p>Leave the gateway machine running.</p>
+
+<h2>Start Whonix-Workstation</h2>
+<p>In VirtualBox, select the virtual machine for Whonix-Workstation-XFCE. Click the <strong>Start</strong> button.</p>
+<p>The workstation VM is where you will do all your work. Wait while it start.</p>
+<p>Read and then dismiss the notifications.</p>
+<p>When you come to information screen 1/2, read it, select the radio button for <strong>Understood / Verstanden</strong>, and click <strong>Next</strong>.
+Again with page 2/2, read it, select the radio button for <strong>Understood / Verstanden</strong>, and click <strong>Next</strong>. Click <strong>Finish</strong>.</p>
+<p>Wait a few minutes for the workstation to carry out its checks in the background.</p>
+<p>Check end-to-end connectivity by opening the Web Browser (Tor Browser AnonDist). The first time you do this, there is some information to read about safe browsing and disabling of JavaScript. Click <strong>Yes</strong> or <strong>No</strong> according to your requirements.</p>
+In the Tor Browser, visit:</p>
+<p><a href="https://check.torproject.org">https://check.torproject.org</a></p>
+<p>You should see a message: "Congratulations. This browser is configured to use Tor."</p>
+
+<h2>Ending Your Whonix Session</h2>
+<p>To end your Whonix session, shut down the Whonix-Workstation first.</p>
+<p>Shut down the Whonix-Gateway second.</p>
+<p>Then close VirtualBox.</p>
+<p>If you have been using ShadowsocksR on the host, open a terminal emulator on the host and issue the commands:</p>
+<p class="terminal"><code>cd ~/Downloads/shadowsocksr/shadowsocks</code></p>
+<p class="terminal"><code>sudo python local.py -d stop</code></p>
+<p>Also undo your proxy settings in Firefox.</p>
+
+</div>
+
+</body>
+</html>
