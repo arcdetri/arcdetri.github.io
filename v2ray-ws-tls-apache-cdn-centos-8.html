@@ -1,0 +1,479 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2Ray+WebSocket+TLS+CDN Server on CentOS 8</title>
+<meta name="description" content="How to install V2Ray on a CentOS 8 Apache server with TLS and CDN protection">
+<meta name="keywords" content="v2ray,websocket,ws,tls,cdn,centos,8,apache">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>September 24, 2019</em></p>
+
+<h1>V2Ray+WebSocket+TLS+CDN Server on CentOS 8</h1>
+
+<p>V2Ray is a multi-featured networking tool that offers:</p>
+
+<ul>
+<li>Multiple inbound and outbound proxies</li>
+<li>Customizable routing</li>
+<li>Multiple protocols</li>
+<li>Obfuscation support</li>
+<li>Reverse proxy support</li>
+<li>Multiple platforms</li>
+</ul>
+
+<p>You can find the official V2Ray manual at <a href="https://www.v2ray.com" target="_blank">https://www.v2ray.com</a>.</p>
+
+<p>This post describes the installation of a V2Ray server on a virtual private server (VPS). The V2Ray client communicates with the server via WebSocket (WS). The IP address of the server is hidden by a content distribution network (CDN). The procedure was tested on a VPS with 1 GB of Random Access Memory (RAM) running CentOS 8. The client for this test was a PC running V2RayN, which is Windows GUI that is a separate project from the main V2Ray core project.</p>
+
+<h2>Create Domain Name and VPS</h2>
+
+<p>Start by registering a domain name for your web site. We will use a free name from <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, and the example domain name used in the rest of this post will be <code>arcdetri.cf</code>.</p>
+
+<p>Obtain a CentOS 8 virtual private server (VPS). Some popular providers are Bandwagon Host (搬瓦工) and Google Compute Engine (GCE), but you can use a different VPS provider if you prefer.</code>.</p>
+
+<p>Note down the server's IP address. We will use as an example the IP address <code>168.168.168.168</code>.</p>
+
+<p>Back at your domain name registrar, which for us is <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, add a DNS A record pointing from your server host name (e.g. <code>www</code>, type <code>A</code>, time-to-live <code>3600</code> seconds) to your server IP address (e.g. <code>168.168.168.168</code>). Save these changes.</p>
+
+<h2>Tune Server</h2>
+
+<p>SSH into your server from a terminal emulator (from Linux or macOS) or a tool such as PuTTY, NetSarang XSHELL, or PowerShell (from Windows). If your DNS records have had time to propagate, you can use the server's hostname. For example:</p>
+
+<p class="terminal"><code>ssh root@www.arcdetri.cf</code></p>
+
+<p>Otherwise, you must use the server's IP address. For example:</p>
+
+<p class="terminal"><code>ssh root@168.168.168.168</code></p>
+
+<p>Start by getting your server's existing software packages up to date:</p>
+
+<p class="terminal"><code>yum update</code></p>
+
+<p>Change the password to something only you know:</p>
+
+<p class="terminal"><code>passwd root</code></p>
+
+<p>The Bottleneck Bandwidth and Round-trip propagation time (BBR) congestion control algorithm tracks a connection's delivery rate and round-trip time to offer higher throughput and lower queueing delays where there are network bottlenecks. BBR has been supported by Linux since kernel version 4.9. Since CentOS 8 is based on Linux kernel 4.18, we can use it here. Create a new system control parameters file for BBR:</p>
+
+<p class="terminal"><code>vi /etc/sysctl.d/60-bbr.conf</code></p>
+
+<p>Press the <strong>i</strong> key on your computer keyboard to enter insert mode. Insert the lines that specify the BBR congestion control algorithm:</p>
+
+<p class="terminal"><code>net.core.default_qdisc=fq<br>
+net.ipv4.tcp_congestion_control=bbr</code></p>
+
+<p>Press the <strong>Esc</strong> key on your computer keyboard followed by <code>:wq</code> to write the file to disk and quit the editor. Activate these changes:</p>
+
+<p class="terminal"><code>sysctl -p /etc/sysctl.d/60-bbr.conf</code></p>
+
+<p>If your VPS hostname is not yet set to your chosen hostname, then set it now:</p>
+
+<p class="terminal"><code>hostnamectl set-hostname www.arcdetri.cf</code></p>
+
+<p>Add the actual hostname to your <code>/etc/hosts</code> file.</p>
+
+<p class="terminal"><code>vi /etc/hosts</code></p>
+
+<p>Add a new line:</p>
+
+<p class="terminal"><code>127.0.0.1 www.arcdetri.cf</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Reboot to make the hostname change effective:</p>
+
+<p class="terminal"><code>reboot</code></p>
+
+<p>You may need to wait several minutes for the server to fully reboot, otherwise you will get a <code>Connection refused</code> message. When the reboot is complete, log on to your server again:</p>
+
+<p class="terminal"><code>ssh root@www.arcdetri.cf</code></p>
+
+<p>Verify that your tuning changes have persisted across reboots:</p>
+
+<p class="terminal"><code>sysctl net.core.default_qdisc</code></p>
+<p class="terminal"><code>sysctl net.ipv4.tcp_congestion_control</code></p>
+<p class="terminal"><code>hostname</code></p>
+
+<h2>Configure Firewall</h2>
+
+<p>FirewallD may already be <code>active (running)</code>. You can check this with the command:</p>
+
+<p class="terminal"><code>systemctl status firewalld</code></p>
+
+<p>If not, then install and start FirewallD:</p>
+
+<p class="terminal"><code>yum install firewalld<br>
+systemctl enable firewalld<br>
+systemctl start firewalld</code></p>
+
+<p>Now that it is <code>active (running)</code>, we will use the FirewallD <code>trusted</code> zone to whitelist your own IP address for access to SSH. You will need to substitute in the actual public IP address of your workstation. You can get your workstation's public IP address by opening a browser and visiting a site such as <a href="https://whatismyipaddress.com" target="_blank">https://whatismyipaddress.com</a> or <a href="https://www.ipip.net/ip.html" target="_blank">https://www.ipip.net/ip.html</a>. The commands below use an example workstation IP address of <code>11.22.33.44</code>, which is represented in classless interdomain routing (CIDR) notation as <code>11.22.33.44/32</code>. If you do not have a fixed IP address, but your IP address always comes from a certain block, you can substitute a CIDR range such as <code>11.22.00.00/16</code>. In some cloud providers, you must also open port 22 in the VPS's Security Group.</p>
+
+<p class="terminal"><code>firewall-cmd --permanent --zone=trusted --add-service=ssh</code></p>
+<p class="terminal"><code>firewall-cmd --permanent --zone=trusted --add-source=11.22.33.44/32</code></p>
+<p class="terminal"><code>firewall-cmd --reload</code></p>
+<p class="terminal"><code>firewall-cmd --zone=trusted --list-all</code></p>
+
+<p>We now prevent any other public IP addresses from reaching port 22 (the SSH port) by removing the <code>ssh</code> service from the <code>public</code> zone:</p>
+
+<p class="terminal"><code>firewall-cmd --permanent --zone=public --remove-service=ssh</code></p>
+<p class="terminal"><code>firewall-cmd --reload</code></p>
+<p class="terminal"><code>firewall-cmd --zone=public --list-all</code></p>
+
+<h2>Install Web Server</h2>
+
+<p>We are going to use Apache for our web server, although you could alternatively use Nginx. In either case, you must first open the firewall ports 80 (the HTTP port) and 443 (the HTTPS port):</p>
+
+<p class="terminal"><code>firewall-cmd --permanent --zone=public --add-service=http</code></p>
+<p class="terminal"><code>firewall-cmd --permanent --zone=public --add-service=https</code></p>
+<p class="terminal"><code>firewall-cmd --reload</code></p>
+<p class="terminal"><code>firewall-cmd --zone=public --list-all</code></p>
+
+<p>In certain cloud providers, you must also open the necessary ports in the VPS's Security Group.</p>
+
+<p>Now install the Apache web server:</p>
+
+<p class="terminal"><code>yum install httpd</code></p>
+<p class="terminal"><code>systemctl enable httpd</code></p>
+<p class="terminal"><code>systemctl start httpd</code></p>
+
+<p>Create a directory for your Apache virtual host's HTML:</p>
+
+<p class="terminal"><code>mkdir -p /var/www/www.arcdetri.cf/html</code></p>
+
+<p>Create a configuration file for your Apache virtual host:</p>
+
+<p class="terminal"><code>vi /etc/httpd/conf.d/www.arcdetri.cf.conf</code></p>
+
+<p>Insert your virtual host definition. You can start with a minimal virtual host definition like this:</p>
+
+<p class="terminal"><code>&lt;VirtualHost *:80&gt;<br>
+    ServerName www.arcdetri.cf<br>
+    DocumentRoot /var/www/www.arcdetri.cf/html<br>
+&lt;/VirtualHost&gt;</code></p>
+
+<p>Write the file to disk, and quit the editor. </p>
+
+<p><img src="images/v2ray1.png" alt="Apache minimal configuration for HTTP virtual host on port 80"></p>
+
+<p>Restart the web server:</p>
+
+<p class="terminal"><code>systemctl restart httpd</code></p>
+
+<p>Verify that the service is running with the following command:</p>
+
+<p class="terminal"><code>systemctl status httpd</code></p>
+
+<p>You should see a status of <code>active (running)</code>.</p>
+
+<h2>Add Web Content</h2>
+
+<p>Now create your web site content in the <code>/var/www/www.arcdetri.cf/html</code> directory. For the sake of this post, we will use some sample content:</p>
+
+<p class="terminal"><code>yum install wget zip unzip</code></p>
+<p class="terminal"><code>wget https://github.com/arcdetri/sample-blog/archive/master.zip</code></p>
+<p class="terminal"><code>unzip master.zip</code></p>
+<p class="terminal"><code>cp -rf sample-blog-master/html/* /var/www/www.arcdetri.cf/html/</code></p>
+
+<p>When you have added your content, you can open a browser and visit the HTTP version of your website to confirm that your web server is working. In our example, this would be:</p>
+
+<p class="terminal"><code>http://www.arcdetri.cf</code></p>
+
+<h2>Obtain Let's Encrypt SSL Certificate</h2>
+
+<p>Now install the Let’s Encrypt certificate bot:</p>
+
+<p class="terminal"><code>wget https://dl.eff.org/certbot-auto</code></p>
+<p class="terminal"><code>mv certbot-auto /usr/local/bin/certbot-auto</code></p>
+
+<p>If you are using <code>sudo</code> rather than the actual <code>root</code> user, you must change the ownership of <code>/usr/local/bin/certbot-auto</code> to <code>root</code> at this stage. In either case, carry on by restricting the permissions on it:</p>
+
+<p class="terminal"><code>chmod 0755 /usr/local/bin/certbot-auto</code></p>
+
+<p>To fix an apparent bug concerning a missing file when creating a virtual environment, issue the additional command:</p>
+
+<p class="terminal"><code>yum install python3-virtualenv</code></p>
+
+<p>Now request a certificate for your hostname:</p>
+
+<p class="terminal"><code>/usr/local/bin/certbot-auto certonly --apache -d www.arcdetri.cf</code></p>
+
+<p>Some additional dependencies will be installed first. Then, in response to the prompts, answer the questions:</p>
+
+<ul>
+<li>Enter your email address</li>
+<li>Enter <code>a</code> for agree</li>
+<li>Enter <code>y</code> or <code>n</code> for emails, as you prefer</li>
+</ul>
+
+<p>Another apparent bug gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
+
+<p class="terminal"><code>rm /etc/httpd/conf.d/ssl.conf</code></p>
+
+<p class="terminal"><code>/usr/local/bin/certbot-auto certonly --apache -d www.arcdetri.cf</code></p>
+
+<p>Continuing to use the hostname <code>www.arcdetri.cf</code> as our example, Certbot places the certificates and key in:</p>
+
+<ul>
+<li><code>/etc/letsencrypt/live/www.arcdetri.cf/fullchain.pem</code></li>
+<li><code>/etc/letsencrypt/live/www.arcdetri.cf/privkey.pem</code></li>
+</ul>
+
+<p>Set up Certbot to automatically renew the certificate every three months. The following line will add a cron job to the default crontab.</p>
+
+<p class="terminal"><code>echo "0 0,12 * * * root python -c 'import random; import time; time.sleep(random.random() * 3600)' && /usr/local/bin/certbot-auto renew" | sudo tee -a /etc/crontab > /dev/null</code></p>
+
+<h2>Create HTTPS Virtual Host Using SSL Certificate and Key</h2>
+
+<p>Edit your HTTP (port 80) virtual host configuration file. In our example, that is:</p>
+
+<p class="terminal"><code>vi /etc/httpd/conf.d/www.arcdetri.cf.conf</code></p>
+
+<p>Add a line to redirect HTTP requests to HTTPS:</p>
+
+<p class="terminal"><code>Redirect / https://www.arcdetri.cf</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Now create a new virtual host file for your HTTPS virtual host:</p>
+
+<p class="terminal"><code>vi /etc/httpd/conf.d/www.arcdetri.cf-ssl.conf</code></p>
+
+<p>Insert your virtual host definition. You can start with a minimal virtual host definition like this. As always, replace <code>www.arcdetri.cf</code> by your actual hostname.</p>
+
+<p class="terminal"><code>&lt;VirtualHost *:443&gt;<br>
+SSLEngine on<br>
+SSLCipherSuite ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256<br>
+SSLCertificateFile     /etc/letsencrypt/live/www.arcdetri.cf/fullchain.pem<br>
+SSLCertificateKeyFile  /etc/letsencrypt/live/www.arcdetri.cf/privkey.pem<br>
+ServerName www.arcdetri.cf<br>
+DocumentRoot /var/www/www.arcdetri.cf/html<br>
+&lt;/VirtualHost&gt;</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p><img src="images/v2ray2.png" alt="Apache minimal configuration for HTTPS virtual host on port 443"></p>
+
+<p>Edit the main Apache configuration file:</p>
+
+<p class="terminal"><code>vi /etc/httpd/conf/httpd.conf</code></p>
+
+<p>Make Apache listen on port 443 as well as the existing port 80 by inserting a line:</p>
+ 
+<p class="terminal"><code>Listen 443</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Restart the web server:</p>
+
+<p class="terminal"><code>systemctl restart httpd</code></p>
+
+<p>You can now visit the HTTPS version of your website in a browser to confirm that your web server is working. In our example, the URL would be:</p>
+
+<p class="terminal"><code>https://www.arcdetri.cf</code></p>
+
+<p>Optionally, you can further test your server's SSL configuration at <a href="https://www.ssllabs.com/ssltest/" target="_blank">https://www.ssllabs.com/ssltest/</a>.</p>
+
+<h2>Add Domain to CDN</h2>
+
+<p>Now you can add your domain to a Content Distribution Network (CDN). We will use Cloudflare in this example. Open a browser and visit <a href="https://www.cloudflare.com" target="_blank">https://www.cloudflare.com</a>.</p>
+
+<p>Sign up and create an account. Add your domain. Look for a verification email, and click the <strong>Verify email</strong> link.</p>
+
+<p>When asked which plan you want for your domain, select the <strong>Free</strong> plan and click <strong>Confirm plan</strong>.</p>
+
+<p>The existing DNS records are retrieved from your registrar. Click <strong>Continue</strong>.</p>
+
+<p>Cloudflare displays your new nameservers. There are two of them. They will look something like <code>edwina.ns.cloudflare.com</code> and <code>freddie.ns.cloudflare.com</code>.</p>
+
+<p>Copy the Cloudflare nameservers across to your registrar. In our example of <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, the process would be:</p>
+
+<ol>
+<li>Log on to <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>.</li>
+<li>Under Services, select <strong>My Domains</strong>.</li>
+<li>Click <strong>Manage Domain</strong>.</li>
+<li>Under Management Tools, select <strong>Nameservers</strong>.</li>
+<li>Select <strong>Use custom nameservers</strong>. Enter the two nameservers you were given by Cloudflare. Click <strong>Change nameservers</strong>.</li>
+<li>You see a message to say nameservers were successfully changed.</li>
+</ol>
+
+<p>Back on the Cloudflare site, click the button saying you have changed your nameservers and they can now be checked. You will see a message telling you to wait a few hours until your changes have been successfully propagated and checked.</p>
+
+<p>Once you have <em>waited the required length of time</em>, open a command prompt <em>on your workstation</em> (a Windows PC in this example) and check your server's apparent IP address by issuing the command:</p>
+
+<p class="terminal"><code>nslookup www.arcdetri.cf</code></p>
+
+<p>Instead of your server's actual IP address, the above command should now show Cloudflare IP addresses. These are listed at <a href="https://www.cloudflare.com/ips/" target="_blank">https://www.cloudflare.com/ips/</a>.</p>
+
+<h2>Generate Secret Directory Name</h2>
+
+<p>So far, we have an ordinary web site. Now we will configure the web server to pass traffic to V2Ray when the client issues a request for a secret directory. Create your secret directory name with the command:</p>
+
+<p class="terminal"><code>head /dev/urandom | tr -dc a-z0-9 | head -c 16 ; echo ''</code></p>
+
+<p>You will get a result such as:</p>
+
+<p class="terminal"><code>9w2daxsrop8yibtj</code></p>
+
+<p>We will use <code>9w2daxsrop8yibtj</code> as our example secret directory when we configure V2Ray, Apache, and V2RayN in a moment.</p>
+
+<h2>Install V2Ray</h2>
+
+<p>To install V2Ray, download and execute the V2Ray installation script:</p>
+
+<p class="terminal"><code>wget https://install.direct/go.sh</code></p>
+
+<p class="terminal"><code>bash go.sh</code></p>
+
+<p>A default PORT and UUID are displayed toward the end of the install. The UUID is effectively a password and will need to be known by the client when we set it up. They will look something like this:</p>
+
+<p class="terminal"><code>PORT:36711<br>
+UUID:450f02d5-dea0-457d-b055-ed807e8dc21d</code></p>
+
+<p>Edit the V2Ray configuration file <code>/etc/v2ray/config.json</code>:</p>
+
+<p class="terminal"><code>vi /etc/v2ray/config.json</code></p>
+
+<p>In the inbound specification, after the port number line, add a new line to specify that V2Ray should listen on localhost:</p>
+
+<p class="terminal"><code>"port": 36711,<br>
+"listen": "127.0.0.1",</code></p>
+
+<p>After the end of the existing <code>inbound</code> settings section:</p>
+
+<ol>
+<li>Add a comma after the closing curly brace</li>
+<li>Add a new section for <code>streamSettings</code></li>
+</ol>
+
+<p>The <code>streamSettings</code> section should look like this. You will need to replace <code>9w2daxsrop8yibtj</code> by your actual secret directory name.</p>
+
+<p class="terminal"><code>"streamSettings": {<br>
+  "network": "ws",<br>
+  "wsSettings": {<br>
+    "path": "/9w2daxsrop8yibtj/"<br>
+  }<br>
+}</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p><img src="images/v2ray3.png" alt="V2Ray configuration for localhost WebSocket (WS) streamSettings"></p>
+
+<p>Start V2Ray with your revised configuration file:</p>
+
+<p class="terminal"><code>systemctl start v2ray</code></p>
+
+<h2>Set Up Apache Proxy Pass to V2Ray</h2>
+
+<p>Set the SELinux boolean to allow Apache to make network connections:</p>
+
+<p class="terminal"><code>/usr/sbin/setsebool -P httpd_can_network_connect 1</code></p>
+
+<p>Edit the SSL virtual host configuration file:</p>
+
+<p class="terminal"><code>vi /etc/httpd/conf.d/www.arcdetri.cf-ssl.conf</code></p>
+
+<p>Before the end of the <code>Virtual Host</code> block, pass traffic from Apache to V2Ray. Replace <code>9w2daxsrop8yibtj</code> by your actual secret directory name. You will also need to replace <code>36711</code> by the port number V2Ray is listening on.</p>
+
+<p class="terminal"><code>&lt;LocationMatch "/9w2daxsrop8yibtj/"&gt;<br>
+ProxyPass ws://127.0.0.1:36711/9w2daxsrop8yibtj/<br>
+ProxyAddHeaders Off<br>
+ProxyPreserveHost On<br>
+RequestHeader set Host %{HTTP_HOST}s<br>
+RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s<br>
+&lt;/LocationMatch&gt;</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p><img src="images/v2ray4.png" alt="Apache configuration for proxy pass to V2Ray"></p>
+
+<p>Restart Apache with these configuration changes:</p>
+
+<p class="terminal"><code>systemctl restart httpd</code></p>
+
+<p>In a browser on your PC, check that you can still visit your website:</p>
+
+<p class="terminal"><code>https://www.arcdetri.cf</code></p>
+
+<h2>Install V2RayN on Client</h2>
+
+<p>We will use the example of a Windows 10 PC, the V2RayN client, and the Firefox browser for the initial test of the V2Ray server. You can alternatively test the server using an Android client running BifrostV or V2RayNG.</p>
+
+<p>Download and install the latest release of <code>v2rayN-Core.zip</code> from:</p>
+
+<p><a href="https://github.com/2dust/v2rayN/releases" target="_blank">https://github.com/2dust/v2rayN/releases</a></p>
+
+<p>Extract files from the downloaded <code>v2rayN-Core.zip</code> file.</p>
+
+<p>Go into the <code>v2rayN-Core</code> folder, and launch the application <code>v2rayN.exe</code>.</p>
+
+<p>In the system tray, which is at the bottom right of your Windows desktop, click the V2RayN icon to open the V2RayN control panel.</p>
+
+<p>Click the menu bar item for <strong>Servers (服务器)</strong>, and select the first option, which is the one for <strong>Add VMess server (添加VMess服务器)</strong>.</p>
+
+<p>Enter the values, which for us in this example would be:</p>
+
+<ul>
+<li>Address (地址) = <code>www.arcdetri.cf</code></li>
+<li>Port (端口) = <code>443</code></li>
+<li>UUID (用户ID) = <code>450f02d5-dea0-457d-b055-ed807e8dc21d</code></li>
+<li>AlterID (额外ID) = <code>64</code></li>
+<li>Security (加密方式) = <code>auto</code></li>
+<li>Network (传输协议) = <code>ws</code></li>
+<li>Remarks (别名) = whatever you like</li>
+<li>Type (伪装类型) = <code>none</code></li>
+<li>Host (伪装域名) = <code>www.arcdetri.cf</code></li>
+<li>Path (路径) = <code>/9w2daxsrop8yibtj/</code></li>
+<li>Transmission security (底层传输安全) = <code>tls</code></li>
+<li>Allow Insecure = <code>true</code></li>
+</ul>
+
+<p>Click the <strong>Open (确定)</strong> button.</p>
+
+<p><img src="images/v2ray5.png" alt="V2RayN GUI parameters for WebSocket (WS)"></p>
+
+<p>V2RayN saves its GUI configuration parameters in <code>guiNConfig.json</code>. From the parameters entered in the GUI, it generates a V2Ray configuration, which it saves in <code>config.json</code>.</p>
+
+<h2>Configure Firefox on Client</h2>
+
+<p>If you do not already have Firefox, then install it now from <a href="https://www.mozilla.org" target="_blank">https://www.mozilla.org</a>.</p>
+
+<p>Launch Firefox.</p>
+
+<ol>
+<li>From the menu in the top right corner, select <strong>Options</strong></li>
+<li>Scroll down to the bottom, and where you see Network Settings, click <strong>Settings</strong></li>
+<li>Select <strong>Manual proxy configuration</strong></li>
+<li>In SOCKS Host, put <code>127.0.0.1</code></li>
+<li>For Port, put <code>10808</code> (the latest releases of V2RayN use port <code>10808</code> instead of port <code>1080</code>)</li>
+<li>Check the radio button for <strong>SOCKS v5</strong></li>
+<li>Check the box for <strong>Proxy DNS when using SOCKS v5</strong></li>
+<li>Press <strong>OK</strong> to save your settings</li>
+</ol>
+
+<p><img src="images/v2ray6.png" alt="Firefox network settings for manual proxy configuration for V2RayN"></p>
+
+<h2>End-to-End Tests</h2>
+
+<p>1. Check that everything is working by visiting in Firefox:</p>
+
+<p><a href="https://www.iplocation.net" target="_blank">https://www.iplocation.net</a></p>
+
+<p>You should see the IP address and location of your V2Ray server.</p>
+
+<p>2. Shut down V2RayN by right-clicking on its icon in the system tray and selecting the quit option (<strong>退出</strong>). Set Firefox back to <strong>Use system proxy settings</strong>. Check that your website (<code>https://www.arcdetri.cf</code> in our example) still appears to be a normal website.</p>
+
+</div>
+
+</body>
+</html>
