@@ -34,9 +34,9 @@
 
 <p>You can find the official V2Ray manual at <a href="https://www.v2ray.com" target="_blank">https://www.v2ray.com</a>.</p>
 
-<p>This post describes the installation of a V2Ray server on a virtual private server (VPS). The V2Ray client communicates with the server via WebSocket (WS). The IP address of the server is hidden by a content distribution network (CDN). The procedure was tested on a VPS with 1 GB of Random Access Memory (RAM) running CentOS 8. The client for this test was a PC running V2RayN, which is Windows GUI that is a separate project from the main V2Ray core project.</p>
+<p>This post describes the installation of a V2Ray server on a virtual private server (VPS). The V2Ray client communicates with the server via WebSocket (WS). The IP address of the server is hidden by a content distribution network (CDN). The procedure was tested on a VPS with 1 GB of Random Access Memory (RAM) running CentOS 8. The client for this test was a PC running V2RayN, which is a Windows GUI that is a separate project from the main V2Ray core project.</p>
 
-<h2>Create Domain Name and VPS</h2>
+<h2><a name="h2-1"></a>Create Domain Name and VPS</h2>
 
 <p>Start by registering a domain name for your web site. We will use a free name from <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, and the example domain name used in the rest of this post will be <code>arcdetri.cf</code>.</p>
 
@@ -46,7 +46,7 @@
 
 <p>Back at your domain name registrar, which for us is <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, add a DNS A record pointing from your server host name (e.g. <code>www</code>, type <code>A</code>, time-to-live <code>3600</code> seconds) to your server IP address (e.g. <code>168.168.168.168</code>). Save these changes.</p>
 
-<h2>Tune Server</h2>
+<h2><a name="h2-2"></a>Tune Server</h2>
 
 <p>SSH into your server from a terminal emulator (from Linux or macOS) or a tool such as PuTTY, NetSarang XSHELL, or PowerShell (from Windows). If your DNS records have had time to propagate, you can use the server's hostname. For example:</p>
 
@@ -105,7 +105,7 @@ net.ipv4.tcp_congestion_control=bbr</code></p>
 <p class="terminal"><code>sysctl net.ipv4.tcp_congestion_control</code></p>
 <p class="terminal"><code>hostname</code></p>
 
-<h2>Configure Firewall</h2>
+<h2><a name="h2-3"></a>Configure Firewall</h2>
 
 <p>FirewallD may already be <code>active (running)</code>. You can check this with the command:</p>
 
@@ -117,7 +117,7 @@ net.ipv4.tcp_congestion_control=bbr</code></p>
 systemctl enable firewalld<br>
 systemctl start firewalld</code></p>
 
-<p>Now that it is <code>active (running)</code>, we will use the FirewallD <code>trusted</code> zone to whitelist your own IP address for access to SSH. You will need to substitute in the actual public IP address of your workstation. You can get your workstation's public IP address by opening a browser and visiting a site such as <a href="https://whatismyipaddress.com" target="_blank">https://whatismyipaddress.com</a> or <a href="https://www.ipip.net/ip.html" target="_blank">https://www.ipip.net/ip.html</a>. The commands below use an example workstation IP address of <code>11.22.33.44</code>, which is represented in classless interdomain routing (CIDR) notation as <code>11.22.33.44/32</code>. If you do not have a fixed IP address, but your IP address always comes from a certain block, you can substitute a CIDR range such as <code>11.22.00.00/16</code>. In some cloud providers, you must also open port 22 in the VPS's Security Group.</p>
+<p>Now that it is <code>active (running)</code>, use the FirewallD <code>trusted</code> zone to whitelist your own IP address for access to SSH. You will need to substitute in the actual public IP address of your workstation. You can get your workstation's public IP address by opening a browser and visiting a site such as <a href="https://whatismyipaddress.com" target="_blank">https://whatismyipaddress.com</a> or <a href="https://www.ipip.net/ip.html" target="_blank">https://www.ipip.net/ip.html</a>. The commands below use an example workstation IP address of <code>11.22.33.44</code>, which is represented in classless interdomain routing (CIDR) notation as <code>11.22.33.44/32</code>. If you do not have a fixed IP address, but your IP address always comes from a certain block, you can substitute a CIDR range such as <code>11.22.00.00/16</code>. In some cloud providers, you must also open port 22 in the VPS's Security Group.</p>
 
 <p class="terminal"><code>firewall-cmd --permanent --zone=trusted --add-service=ssh</code></p>
 <p class="terminal"><code>firewall-cmd --permanent --zone=trusted --add-source=11.22.33.44/32</code></p>
@@ -130,7 +130,7 @@ systemctl start firewalld</code></p>
 <p class="terminal"><code>firewall-cmd --reload</code></p>
 <p class="terminal"><code>firewall-cmd --zone=public --list-all</code></p>
 
-<h2>Install Web Server</h2>
+<h2><a name="h2-4"></a>Install Web Server</h2>
 
 <p>We are going to use Apache for our web server, although you could alternatively use Nginx. In either case, you must first open the firewall ports 80 (the HTTP port) and 443 (the HTTPS port):</p>
 
@@ -176,7 +176,7 @@ systemctl start firewalld</code></p>
 
 <p>You should see a status of <code>active (running)</code>.</p>
 
-<h2>Add Web Content</h2>
+<h2><a name="h2-5"></a>Add Web Content</h2>
 
 <p>Now create your web site content in the <code>/var/www/www.arcdetri.cf/html</code> directory. For the sake of this post, we will use some sample content:</p>
 
@@ -189,14 +189,14 @@ systemctl start firewalld</code></p>
 
 <p class="terminal"><code>http://www.arcdetri.cf</code></p>
 
-<h2>Obtain Let's Encrypt SSL Certificate</h2>
+<h2><a name="h2-6"></a>Obtain Let's Encrypt SSL Certificate</h2>
 
 <p>Now install the Let’s Encrypt certificate bot:</p>
 
 <p class="terminal"><code>wget https://dl.eff.org/certbot-auto</code></p>
 <p class="terminal"><code>mv certbot-auto /usr/local/bin/certbot-auto</code></p>
 
-<p>If you are using <code>sudo</code> rather than the actual <code>root</code> user, you must change the ownership of <code>/usr/local/bin/certbot-auto</code> to <code>root</code> at this stage. In either case, carry on by restricting the permissions on it:</p>
+<p>If you are using <code>sudo</code> rather than the actual root user, you must change the ownership of <code>/usr/local/bin/certbot-auto</code> to root at this stage. In either case, carry on by restricting the permissions on it:</p>
 
 <p class="terminal"><code>chmod 0755 /usr/local/bin/certbot-auto</code></p>
 
@@ -233,7 +233,7 @@ systemctl start firewalld</code></p>
 
 <p class="terminal"><code>echo "0 0,12 * * * root python -c 'import random; import time; time.sleep(random.random() * 3600)' && /usr/local/bin/certbot-auto renew" | sudo tee -a /etc/crontab > /dev/null</code></p>
 
-<h2>Create HTTPS Virtual Host Using SSL Certificate and Key</h2>
+<h2><a name="h2-7"></a>Create HTTPS Virtual Host Using SSL Certificate and Key</h2>
 
 <p>Edit your HTTP (port 80) virtual host configuration file. In our example, that is:</p>
 
@@ -284,7 +284,7 @@ DocumentRoot /var/www/www.arcdetri.cf/html<br>
 
 <p>Optionally, you can further test your server's SSL configuration at <a href="https://www.ssllabs.com/ssltest/" target="_blank">https://www.ssllabs.com/ssltest/</a>.</p>
 
-<h2>Add Domain to CDN</h2>
+<h2><a name="h2-8"></a>Add Domain to CDN</h2>
 
 <p>Now you can add your domain to a Content Distribution Network (CDN). We will use Cloudflare in this example. Open a browser and visit <a href="https://www.cloudflare.com" target="_blank">https://www.cloudflare.com</a>.</p>
 
@@ -315,7 +315,7 @@ DocumentRoot /var/www/www.arcdetri.cf/html<br>
 
 <p>Instead of your server's actual IP address, the above command should now show Cloudflare IP addresses. These are listed at <a href="https://www.cloudflare.com/ips/" target="_blank">https://www.cloudflare.com/ips/</a>.</p>
 
-<h2>Generate Secret Directory Name</h2>
+<h2><a name="h2-9"></a>Generate Secret Directory Name</h2>
 
 <p>So far, we have an ordinary web site. Now we will configure the web server to pass traffic to V2Ray when the client issues a request for a secret directory. Create your secret directory name with the command:</p>
 
@@ -327,7 +327,7 @@ DocumentRoot /var/www/www.arcdetri.cf/html<br>
 
 <p>We will use <code>9w2daxsrop8yibtj</code> as our example secret directory when we configure V2Ray, Apache, and V2RayN in a moment.</p>
 
-<h2>Install V2Ray</h2>
+<h2><a name="h2-10"></a>Install V2Ray</h2>
 
 <p>To install V2Ray, download and execute the V2Ray installation script:</p>
 
@@ -373,7 +373,7 @@ UUID:450f02d5-dea0-457d-b055-ed807e8dc21d</code></p>
 
 <p class="terminal"><code>systemctl start v2ray</code></p>
 
-<h2>Set Up Apache Proxy Pass to V2Ray</h2>
+<h2><a name="h2-11"></a>Set Up Apache Proxy Pass to V2Ray</h2>
 
 <p>Set the SELinux boolean to allow Apache to make network connections:</p>
 
@@ -405,7 +405,7 @@ RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s<br>
 
 <p class="terminal"><code>https://www.arcdetri.cf</code></p>
 
-<h2>Install V2RayN on Client</h2>
+<h2><a name="h2-12"></a>Install V2RayN on Client</h2>
 
 <p>We will use the example of a Windows 10 PC, the V2RayN client, and the Firefox browser for the initial test of the V2Ray server. You can alternatively test the server using an Android client running BifrostV or V2RayNG.</p>
 
@@ -444,7 +444,7 @@ RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s<br>
 
 <p>V2RayN saves its GUI configuration parameters in <code>guiNConfig.json</code>. From the parameters entered in the GUI, it generates a V2Ray configuration, which it saves in <code>config.json</code>.</p>
 
-<h2>Configure Firefox on Client</h2>
+<h2><a name="h2-13"></a>Configure Firefox on Client</h2>
 
 <p>If you do not already have Firefox, then install it now from <a href="https://www.mozilla.org" target="_blank">https://www.mozilla.org</a>.</p>
 
@@ -463,7 +463,7 @@ RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s<br>
 
 <p><img src="images/v2ray6.png" alt="Firefox network settings for manual proxy configuration for V2RayN"></p>
 
-<h2>End-to-End Tests</h2>
+<h2><a name="h2-14"></a>End-to-End Tests</h2>
 
 <p>1. Check that everything is working by visiting in Firefox:</p>
 
