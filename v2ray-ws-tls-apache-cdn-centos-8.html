@@ -216,7 +216,7 @@ systemctl start firewalld</code></p>
 <li>Enter <code>y</code> or <code>n</code> for emails, as you prefer</li>
 </ul>
 
-<p>Another apparent bug gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
+<p>Another apparent bug gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>, saying <code>file '/etc/pki/tls/certs/localhost.crt' does not exist or is empty</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
 
 <p class="terminal"><code>rm /etc/httpd/conf.d/ssl.conf</code></p>
 
