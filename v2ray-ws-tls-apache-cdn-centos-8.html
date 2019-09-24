@@ -200,8 +200,8 @@ systemctl start firewalld</code></p>
 
 <p class="terminal"><code>chmod 0755 /usr/local/bin/certbot-auto</code></p>
 
-<p>To fix an apparent bug concerning a missing file when creating a virtual environment, issue the additional command:</p>
-
+<p>There appears to be a bug that causes <code>certbot-auto</code> to end with <code>Creating virtual environment...</code> followed by <code>OSError: [Errno 2] No such file or directory</code>. A workaround to prevent this is to issue the additional command:</p>
+    
 <p class="terminal"><code>yum install python3-virtualenv</code></p>
 
 <p>Now request a certificate for your hostname:</p>
