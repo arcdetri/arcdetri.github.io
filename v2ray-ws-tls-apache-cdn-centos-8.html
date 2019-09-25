@@ -194,7 +194,11 @@ systemctl start firewalld</code></p>
 <p class="terminal"><code>wget https://dl.eff.org/certbot-auto</code></p>
 <p class="terminal"><code>mv certbot-auto /usr/local/bin/certbot-auto</code></p>
 
-<p>If you are using <code>sudo</code> rather than the actual root user, you must change the ownership of <code>/usr/local/bin/certbot-auto</code> to root at this stage. In either case, carry on by restricting the permissions on it:</p>
+<p>We have assumed that you are logged in as root. If you are using a non-root user id with <code>sudo</code> rather than the actual root user, you must change the ownership of <code>/usr/local/bin/certbot-auto</code> to root at this point.</p>
+    
+<p class="terminal"><code>sudo chown root /usr/local/bin/certbot-auto</code></p>
+    
+<p>Set the recommended permissions on it:</p>
 
 <p class="terminal"><code>chmod 0755 /usr/local/bin/certbot-auto</code></p>
 
