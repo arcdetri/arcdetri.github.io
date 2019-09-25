@@ -202,7 +202,7 @@ systemctl start firewalld</code></p>
 
 <p class="terminal"><code>chmod 0755 /usr/local/bin/certbot-auto</code></p>
 
-<p>There appears to be a bug that causes <code>certbot-auto</code> to end with <code>Creating virtual environment...</code> followed by <code>OSError: [Errno 2] No such file or directory</code>. A workaround to prevent this is to issue the additional command:</p>
+<p>There appears to be a bug (<a href="https://github.com/certbot/certbot/issues/7396" target="_blank">issue #7396</a>) that causes <code>certbot-auto</code> to end with <code>Creating virtual environment...</code> followed by <code>OSError: [Errno 2] No such file or directory</code>. A workaround to prevent this is to issue the additional command:</p>
     
 <p class="terminal"><code>yum install python3-virtualenv</code></p>
 
@@ -212,7 +212,7 @@ systemctl start firewalld</code></p>
 
 <p>Some additional dependencies will be installed first.</p>
     
-<p>Another apparent bug gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>, saying <code>file '/etc/pki/tls/certs/localhost.crt' does not exist or is empty</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
+<p>Another apparent bug (<a href="https://github.com/certbot/certbot/issues/7397" target="_blank">issue #7397</a>) gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>, saying <code>file '/etc/pki/tls/certs/localhost.crt' does not exist or is empty</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
 
 <p class="terminal"><code>rm /etc/httpd/conf.d/ssl.conf</code></p>
 
