@@ -210,19 +210,21 @@ systemctl start firewalld</code></p>
 
 <p class="terminal"><code>/usr/local/bin/certbot-auto certonly --apache -d www.arcdetri.cf</code></p>
 
-<p>Some additional dependencies will be installed first. Then, in response to the prompts, answer the questions:</p>
+<p>Some additional dependencies will be installed first.</p>
+    
+<p>Another apparent bug gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>, saying <code>file '/etc/pki/tls/certs/localhost.crt' does not exist or is empty</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
+
+<p class="terminal"><code>rm /etc/httpd/conf.d/ssl.conf</code></p>
+
+<p class="terminal"><code>/usr/local/bin/certbot-auto certonly --apache -d www.arcdetri.cf</code></p>
+    
+<p>Then, in response to the prompts, answer the questions:</p>
 
 <ul>
 <li>Enter your email address</li>
 <li>Enter <code>a</code> for agree</li>
 <li>Enter <code>y</code> or <code>n</code> for emails, as you prefer</li>
 </ul>
-
-<p>Another apparent bug gives an error message referring to <code>/etc/httpd/conf.d/ssl.conf</code>, saying <code>file '/etc/pki/tls/certs/localhost.crt' does not exist or is empty</code>. Fix this error by deleting the erroneous configuration file and rerunning the Certbot command:</p>
-
-<p class="terminal"><code>rm /etc/httpd/conf.d/ssl.conf</code></p>
-
-<p class="terminal"><code>/usr/local/bin/certbot-auto certonly --apache -d www.arcdetri.cf</code></p>
 
 <p>Continuing to use the hostname <code>www.arcdetri.cf</code> as our example, Certbot places the certificates and key in:</p>
 
