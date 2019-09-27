@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2RayN Tor Bridge on Debian 10</title>
+<meta name="description" content="How to create a bridge server that allows V2RayN on Windows to access the Tor network">
+<meta name="keywords" content="v2ray,v2rayn,windows,tor,bridge">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>September 27, 2019</em></p>
+
+<h1>V2RayN Tor Bridge on Debian 10</h1>
+
+<h2 id="h2-0">0. Introduction</h2>
+
+<p>Tor offers protection against many forms of tracking and surveillance. Its official site is at <a href="https://www.torproject.org" target="_blank">https://www.torproject.org</a>. However, Tor is blocked in certain countries. It can be useful to have a bridge to Tor that works from inside these countries. You can use V2Ray to build such a bridge. V2Ray is a multi-featured proxying utility. You can find the official V2Ray manual at <a href="https://www.v2ray.com" target="_blank">https://www.v2ray.com</a>. V2RayN is the graphical user interface (GUI) for V2Ray for Windows PC users. Its Github repository is at <a href="https://github.com/2dust/v2rayN" target="_blank">https://github.com/2dust/v2rayN</a>.</p>
+
+<p>This post shows you how to create a bridge from V2RayN on a Windows PC to the Tor network.</p>
+
+<p>A couple of other ways to use this post:</p>
+
+<ul>
+<li>If you do not need Tor and you stop after <a href="#h2-14">step 14</a>, you will have an ordinary V2Ray+WebSocket+TLS+CDN server.</li>
+<li>If someone has already built a server for you and they give you the <code>vmess://</code> URL, you can import it directly into V2RayN with the menu option 服务器 &gt; 从剪贴板导入批量URL (Servers &gt; Import bulk URLs from clipboard). You then just need to configure Firefox to use the V2RayN proxy, as shown in <a href="#h2-13">step 13</a> below.</li>
+</ul>
+
+<h2 id="h2-1">1. Create Domain Name and VPS</h2>
+
+<p>Start by registering a domain name for your web site. We will use a free name from <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, and the example domain name used in the rest of this post will be <code>v2tor.cf</code>.</p>
+
+<p>Obtain a Debian 10 virtual private server (VPS). Some popular providers are Bandwagon Host (搬瓦工) and Google Compute Engine (GCE), but you can use a different VPS provider if you prefer.</p>
+
+<p>Note down the server's IP address. We will use as an example the IP address <code>188.188.188.188</code>.</p>
+
+<p>Back at your domain name registrar, which for us is <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, add a DNS A record pointing from your server host name (e.g. <code>www</code>, type <code>A</code>, time-to-live <code>3600</code> seconds) to your server IP address (e.g. <code>188.188.188.188</code>). Save these changes.</p>
+
+<p><img src="images/v2tor-1.png" alt="Freenom DNS management record added successfully"></p>
+
+<h2 id="h2-2">2. Tune Server</h2>
+
+<p>SSH into your server from a terminal emulator (from Linux or macOS) or a tool such as PuTTY, NetSarang XSHELL, or PowerShell (from Windows). If your DNS records have had time to propagate, you can use the server's hostname. For example:</p>
+
+<p class="terminal"><code>ssh root@www.v2tor.cf</code></p>
+
+<p>Otherwise, you must use the server's IP address. For example:</p>
+
+<p class="terminal"><code>ssh root@188.188.188.188</code></p>
+
+<p>Start by getting your server's existing software packages up to date:</p>
+
+<p class="terminal"><code>apt update</code></p>
+
+<p class="terminal"><code>apt upgrade</code></p>
+
+<p>Change the password to something only you know:</p>
+
+<p class="terminal"><code>passwd root</code></p>
+
+<p>The Bottleneck Bandwidth and Round-trip propagation time (BBR) congestion control algorithm tracks a connection's delivery rate and round-trip time to offer higher throughput and lower queueing delays where there are network bottlenecks. BBR has been supported by Linux since kernel version 4.9. Since Debian 10 is based on Linux kernel 4.19, we can use it here. Create a local system control parameters file:</p>
+
+<p class="terminal"><code>vi /etc/sysctl.d/local.conf</code></p>
+
+<p>Press the <strong>i</strong> key on your computer keyboard to enter insert mode. Insert the lines that specify the BBR congestion control algorithm:</p>
+
+<p class="terminal"><code>net.core.default_qdisc=fq<br>
+net.ipv4.tcp_congestion_control=bbr</code></p>
+
+<p>Also add lines to increase the maximum number of open files, the buffer sizes, and so on:</p>
+
+<p class="terminal"><code>fs.file-max = 51200<br>
+net.core.rmem_max = 67108864<br>
+net.core.wmem_max = 67108864<br>
+net.core.rmem_default = 65536<br>
+net.core.wmem_default = 65536<br>
+net.core.netdev_max_backlog = 4096<br>
+net.core.somaxconn = 4096<br>
+<br>
+net.ipv4.tcp_syncookies = 1<br>
+net.ipv4.tcp_tw_reuse = 1<br>
+net.ipv4.tcp_fin_timeout = 30<br>
+net.ipv4.tcp_keepalive_time = 1200<br>
+net.ipv4.ip_local_port_range = 10000 65000<br>
+net.ipv4.tcp_max_syn_backlog = 4096<br>
+net.ipv4.tcp_max_tw_buckets = 5000<br>
+net.ipv4.tcp_fastopen = 3<br>
+net.ipv4.tcp_rmem = 4096 87380 67108864<br>
+net.ipv4.tcp_wmem = 4096 65536 67108864<br>
+net.ipv4.tcp_mtu_probing = 1</code></p>
+
+<p>Press the <strong>Esc</strong> key on your computer keyboard followed by <code>:wq</code> to write the file to disk and quit the editor. Activate these changes:</p>
+
+<p class="terminal"><code>sysctl -p /etc/sysctl.d/local.conf</code></p>
+
+<p>Edit security limits configuration file:</p>
+
+<p class="terminal"><code>vi /etc/security/limits.conf</code></p>
+
+<p>Before the end of file, add lines to increase limits on number of files to 51200:
+
+<p class="terminal"><code>* soft nofile 51200<br>
+* hard nofile 51200</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Set current limit on number of files to 51200 by issuing the command:</p>
+
+<p class="terminal"><code>ulimit -SHn 51200</code></p>
+
+<p>Edit the permanent profile:</p>
+
+<p class="terminal"><code>vi /etc/profile</code></p>
+
+<p>Add a line to set the permanent limit on number of files to 51200:</p>
+
+<p class="terminal"><code>ulimit -SHn 51200</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>If your VPS hostname is not yet set to your chosen hostname, then set it now:</p>
+
+<p class="terminal"><code>hostnamectl set-hostname www.v2tor.cf</code></p>
+
+<p>Add the actual hostname to your <code>/etc/hosts</code> file.</p>
+
+<p class="terminal"><code>vi /etc/hosts</code></p>
+
+<p>Add a new line:</p>
+
+<p class="terminal"><code>127.0.0.1 www.v2tor.cf</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Reboot to make the hostname change effective:</p>
+
+<p class="terminal"><code>reboot</code></p>
+
+<p>You may need to wait several minutes for the server to fully reboot, otherwise you will get a <code>Connection refused</code> message. When the reboot is complete, log on to your server again:</p>
+
+<p class="terminal"><code>ssh root@www.v2tor.cf</code></p>
+
+<p>Verify that your tuning changes have persisted across reboots:</p>
+
+<p class="terminal"><code>hostname</code></p>
+<p class="terminal"><code>sysctl net.ipv4.tcp_congestion_control</code></p>
+
+<h2 id="h2-3">3. Configure Firewall</h2>
+
+<p>Enable and start nftables:
+
+<p class="terminal"><code>apt install nftables<br>
+systemctl enable nftables<br>
+systemctl start nftables</code></p>
+
+List the current nftables rules:
+
+<p class="terminal"><code>nft list ruleset</code></p>
+
+<p>You should see a table for inet filter, plus chains within it for input, forward, and output. If this table and its chains do not exist, then create them.</p>
+
+<p>Add a rule to accept all related and established traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input ct state related,established counter accept</code></p>
+
+<p>Add a rule to accept  all loopback interface traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input iif lo counter accept</code></p>
+
+<p>Whitelist your own IP address for access to SSH. You will need to substitute in the actual public IP address of your workstation. You can get your workstation's public IP address by opening a browser and visiting a site such as <a href="https://whatismyipaddress.com" target="_blank">https://whatismyipaddress.com</a> or <a href="https://www.ipip.net/ip.html" target="_blank">https://www.ipip.net/ip.html</a>. The command below uses an example workstation IP address of <code>11.22.33.44</code>, which is represented in classless interdomain routing (CIDR) notation as <code>11.22.33.44/32</code>. If you do not have a fixed IP address, but your IP address always comes from a certain block, you can substitute a CIDR range such as <code>11.22.00.00/16</code>. In some cloud providers, you must also open port 22 in the VPS's Security Group.</p>
+
+<p class="terminal"><code>nft add rule inet filter input tcp dport 22 ip saddr 11.22.33.44/32 counter accept</code></p>
+
+<p>Also accept HTTP and HTTPS traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input tcp dport {80, 443} counter accept</code></p>
+
+<p>Drop any unexpected traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input counter drop</code></p>
+
+<p>Check that the rules now look as expected:</p>
+
+<p class="terminal"><code>nft list ruleset</code></p>
+
+<p>To persist these changes across reboots, save your rules to /etc/nftables.conf:</p>
+
+<p class="terminal"><code>nft list ruleset > /etc/nftables.conf</code></p>
+
+<h2 id="h2-4">4. Install Web Server</h2>
+
+<p>We are going to use Nginx for our web server. We opened the firewall for HTTP and HTTPS in the preceding step. Now install the Nginx web server:</p>
+
+<p class="terminal"><code>apt install nginx</code></p>
+<p class="terminal"><code>systemctl enable nginx</code></p>
+<p class="terminal"><code>systemctl start nginx</code></p>
+
+<p>Edit the main Nginx configuration file:</p>
+
+<p class="terminal"><code>vi /etc/nginx/nginx.conf</code></p>
+
+<p>Uncomment the line that turns off server tokens:</p>
+
+<p class="terminal"><code>server_tokens off;</code></p>
+
+<p>Write the file to disk, and quit the editor. </p>
+
+<p>Edit the default site for Nginx:</p>
+
+<p class="terminal"><code>vi /etc/nginx/sites-available/default</code></p>
+
+<p>Put your real server name. In our example, that is:</p>
+
+<p class="terminal"><code>server_name www.v2tor.cf;</code></p>
+
+<p>Write the file to disk, and quit the editor. </p>
+
+<p>Restart the web server:</p>
+
+<p class="terminal"><code>systemctl restart nginx</code></p>
+
+<p>Verify that the service is running with the following command:</p>
+
+<p class="terminal"><code>systemctl status nginx</code></p>
+
+<p>You should see a status of <code>active (running)</code>.</p>
+
+<h2 id="h2-5">5. Add Web Content</h2>
+
+<p>Now create your web site content in the <code>/var/www/html</code> directory. For the sake of this post, we will use some sample content:</p>
+
+<p class="terminal"><code>apt install wget zip unzip</code></p>
+<p class="terminal"><code>wget https://github.com/arcdetri/sample-blog/archive/master.zip</code></p>
+<p class="terminal"><code>unzip master.zip</code></p>
+<p class="terminal"><code>cp -rf sample-blog-master/html/* /var/www/html/</code></p>
+
+<p>When you have added your content, you can open a browser and visit the HTTP version of your website to confirm that your web server is working. In our example, this would be:</p>
+
+<p class="terminal"><code>http://www.v2tor.cf</code></p>
+
+<h2 id="h2-6">6. Obtain Let's Encrypt SSL Certificate</h2>
+
+<p>Now install the Let’s Encrypt certificate bot:</p>
+
+<p class="terminal"><code>apt install certbot python-certbot-nginx</code></p>
+
+<p>Now request an SSL certificate:</p>
+
+<p class="terminal"><code>certbot --nginx</code></p>
+
+<p>In response to the prompts, answer the questions:</p>
+
+<ul>
+<li>Enter your email address</li>
+<li>Enter <code>a</code> for agree</li>
+<li>Enter <code>y</code> or <code>n</code> for emails, as you prefer</li>
+<li>Enter the number of your domain name, which is probably <code>1</code></li>
+<li>For automatic redirect of HTTP to HTTPS, enter <code>2</code></li>
+</ul>
+
+<p>Continuing to use the hostname <code>www.v2tor.cf</code> as our example, Certbot places the certificates and key in:</p>
+
+<ul>
+<li><code>/etc/letsencrypt/live/www.v2tor.cf/fullchain.pem</code></li>
+<li><code>/etc/letsencrypt/live/www.v2tor.cf/privkey.pem</code></li>
+</ul>
+
+<p>Set up Certbot to automatically renew the certificate every three months. The following line will add a cron job to the default crontab.</p>
+
+<p class="terminal"><code>certbot renew --dry-run</code></p>
+
+<h2 id="h2-7">7. HTTPS Site Using SSL Certificate and Key</h2>
+
+<p>Inspect <code>/etc/nginx/sites-available/default</code>:</p>
+
+<p class="terminal"><code>less /etc/nginx/sites-available/default</code></p>
+
+<p>Notice that Certbot has automatically amended the default site definition so that:</p>
+
+<ul>
+<li>Nginx listens for SSL connections on port 443 (the HTTPS port)</li>
+<li>The HTTPS site specifies your Certbot Let's Encrypt SSL certificate and key</li>
+<li>The HTTP site on port 80 redirects to the HTTPS site on port 443</li>
+</ul>
+
+<p>Press the <strong>q</strong> key on your computer keyboard to quit <code>less</code>.</p>
+
+<p>You can test all this by visiting the HTTPS version of your site in a browser. E.g.:</p>
+
+<p class="terminal"><code>https://www.v2tor.cf</code></p>
+
+<h2 id="h2-8">8. Add Domain to CDN</h2>
+
+<p>Now you can add your domain to a Content Distribution Network (CDN). We will use Cloudflare in this example. Open a browser and visit <a href="https://www.cloudflare.com" target="_blank">https://www.cloudflare.com</a>.</p>
+
+<ol>
+<li>Sign up and create an account</li>
+<li>Add your domain, which in our example is <code>v2tor.cf</code></li>
+<li>If this is the first domain in a new account, look for a verification email, and click the <strong>Verify email</strong> link</li>
+<li>When asked which plan you want for your domain, select the <strong>Free</strong> plan and click <strong>Confirm plan</strong></li>
+<li>The existing DNS records are retrieved from your registrar</li>
+<li>Click <strong>Continue</strong></li>
+<li>Cloudflare displays your new, Cloudflare nameservers</li>
+</ol>
+
+<p>There are two nameservers, and they will look something like <code>edwina.ns.cloudflare.com</code> and <code>freddie.ns.cloudflare.com</code>.</p>
+
+<p>Copy the Cloudflare nameservers across to your registrar. In our example of <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, the process would be:</p>
+
+<ol>
+<li>Log on to <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>.</li>
+<li>Under Services, select <strong>My Domains</strong>.</li>
+<li>Click <strong>Manage Domain</strong>.</li>
+<li>Under Management Tools, select <strong>Nameservers</strong>.</li>
+<li>Select <strong>Use custom nameservers</strong>. Enter the two nameservers you were given by Cloudflare. Click <strong>Change nameservers</strong>.</li>
+<li>You see a message to say nameservers were successfully changed.</li>
+</ol>
+
+<p>Back on the Cloudflare site, click the button saying you have changed your nameservers and they can now be checked. You will see a message telling you to wait a few hours until your changes have been successfully propagated and checked.</p>
+
+<p>Once you have <em>waited the required length of time</em>, open a command prompt <em>on your workstation</em> (a Windows PC in this example) and check your server's apparent IP address by issuing the command:</p>
+
+<p class="terminal"><code>nslookup www.v2tor.cf</code></p>
+
+<p>Instead of your server's actual IP address, the above command should now show Cloudflare IP addresses. These are listed at <a href="https://www.cloudflare.com/ips/" target="_blank">https://www.cloudflare.com/ips/</a>.</p>
+
+<h2 id="h2-9">9. Generate Secret Directory Name</h2>
+
+<p>So far, we have an ordinary web site. Now we will configure the web server to pass traffic to V2Ray when the client issues a request for a secret directory. On your server, create your secret directory name with the command:</p>
+
+<p class="terminal"><code>head /dev/urandom | tr -dc a-z0-9 | head -c 16 ; echo ''</code></p>
+
+<p>You will get a result such as:</p>
+
+<p class="terminal"><code>1ufkol64mtl17s79</code></p>
+
+<p>We will use <code>1ufkol64mtl17s79</code> as our example secret directory when we configure V2Ray, Nginx, and V2RayN in a moment.</p>
+
+<h2 id="h2-10">10. Install V2Ray</h2>
+
+<p>To install V2Ray, download and execute the V2Ray installation script:</p>
+
+<p class="terminal"><code>wget https://install.direct/go.sh</code></p>
+
+<p class="terminal"><code>bash go.sh</code></p>
+
+<p>A default PORT and UUID are displayed toward the end of the install. The UUID is effectively a password and will need to be known by the client when we set it up. They will look something like this:</p>
+
+<p class="terminal"><code>PORT:40659<br>
+UUID:a9b0d719-acdf-4672-a16c-433c508801d0</code></p>
+
+<p>Edit the V2Ray configuration file <code>/etc/v2ray/config.json</code>:</p>
+
+<p class="terminal"><code>vi /etc/v2ray/config.json</code></p>
+
+<p>In the inbound specification, after the port number line, add a new line to specify that V2Ray should listen on localhost:</p>
+
+<p class="terminal"><code>"port": 40659,<br>
+"listen": "127.0.0.1",</code></p>
+
+<p>After the end of the existing <code>inbound</code> settings section:</p>
+
+<ol>
+<li>Add a comma after the closing curly brace</li>
+<li>Add a new section for <code>streamSettings</code></li>
+</ol>
+
+<p>The <code>streamSettings</code> section should look like this. You will need to replace <code>1ufkol64mtl17s79</code> by your actual secret directory name.</p>
+
+<p class="terminal"><code>"streamSettings": {<br>
+  "network": "ws",<br>
+  "wsSettings": {<br>
+    "path": "/1ufkol64mtl17s79/"<br>
+  }<br>
+}</code></p>
+
+<p><img src="images/v2tor-2.png" alt="V2Ray configuration file for WebSocket"></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Start V2Ray with your revised configuration file:</p>
+
+<p class="terminal"><code>systemctl start v2ray</code></p>
+
+<h2 id="h2-11">11. Set Up Nginx Proxy Pass to V2Ray</h2>
+
+<p>Edit the default site configuration file:</p>
+
+<p class="terminal"><code>vi /etc/nginx/sites-available/default</code></p>
+
+<p>Inside the <code>server</code> block, pass traffic from Nginx to V2Ray. Replace <code>1ufkol64mtl17s79</code> by your actual secret directory name. You will also need to replace <code>40659</code> by the port number V2Ray is listening on.</p>
+
+<p class="terminal"><code>location /1ufkol64mtl17s79/ {<br>
+  proxy_redirect off;<br>
+  proxy_pass http://127.0.0.1:40659;<br>
+  proxy_http_version 1.1;<br>
+  proxy_set_header Upgrade $http_upgrade;<br>
+  proxy_set_header Connection "upgrade";<br>
+  proxy_set_header Host $http_host;<br>
+}</code></p>
+
+<p><img src="images/v2tor-3.png" alt="Nginx configuration file for WebSocket proxy pass"></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Restart Nginx with these configuration changes:</p>
+
+<p class="terminal"><code>systemctl restart nginx</code></p>
+
+<p>In a browser on your PC, check that you can still visit your website:</p>
+
+<p class="terminal"><code>https://www.v2tor.cf</code></p>
+
+<h2 id="h2-12">12. Install V2RayN on Client</h2>
+
+<p>We will use the example of a Windows 10 PC, the V2RayN client, and the Firefox browser for the initial test of the V2Ray server. You can alternatively test the server using an Android client running BifrostV or V2RayNG.</p>
+
+<p>Download and install the latest release of <code>v2rayN-Core.zip</code> from:</p>
+
+<p><a href="https://github.com/2dust/v2rayN/releases" target="_blank">https://github.com/2dust/v2rayN/releases</a></p>
+
+<p>Extract files from the downloaded <code>v2rayN-Core.zip</code> file.</p>
+
+<p>Go into the <code>v2rayN-Core</code> folder, and launch the application <code>v2rayN.exe</code>.</p>
+
+<p>In the system tray, which is at the bottom right of your Windows desktop, click the V2RayN icon to open the V2RayN control panel.</p>
+
+<p>Click the menu bar item for <strong>Servers (服务器)</strong>, and select the first option, which is the one for <strong>Add VMess server (添加VMess服务器)</strong>.</p>
+
+<p>Enter the values, which for us in this example would be:</p>
+
+<ul>
+<li>Address (地址) = <code>www.v2tor.cf</code></li>
+<li>Port (端口) = <code>443</code></li>
+<li>UUID (用户ID) = <code>a9b0d719-acdf-4672-a16c-433c508801d0</code></li>
+<li>AlterID (额外ID) = <code>64</code></li>
+<li>Security (加密方式) = <code>auto</code></li>
+<li>Network (传输协议) = <code>ws</code></li>
+<li>Remarks (别名) = whatever you like</li>
+<li>Type (伪装类型) = <code>none</code></li>
+<li>Host (伪装域名) = <code>www.v2tor.cf</code></li>
+<li>Path (路径) = <code>/1ufkol64mtl17s79/</code></li>
+<li>Transmission security (底层传输安全) = <code>tls</code></li>
+<li>Allow Insecure = <code>true</code></li>
+</ul>
+
+<p><img src="images/v2tor-4.png" alt="V2RayN configuration for WebSocket"></p>
+
+<p>Click the <strong>Open (确定)</strong> button.</p>
+
+<p>V2RayN saves its GUI configuration parameters in <code>guiNConfig.json</code>. From the parameters entered in the GUI, it generates a V2Ray configuration, which it saves in <code>config.json</code>.</p>
+
+<h2 id="h2-13">13. Configure Firefox on Client</h2>
+
+<p>If you do not already have Firefox, then install it now from <a href="https://www.mozilla.org" target="_blank">https://www.mozilla.org</a>.</p>
+
+<p>Launch Firefox.</p>
+
+<ol>
+<li>From the menu in the top right corner, select <strong>Options</strong></li>
+<li>Scroll down to the bottom, and where you see Network Settings, click <strong>Settings</strong></li>
+<li>Select <strong>Manual proxy configuration</strong></li>
+<li>In SOCKS Host, put <code>127.0.0.1</code></li>
+<li>For Port, put <code>10808</code> (the latest releases of V2RayN use port <code>10808</code> instead of port <code>1080</code>)</li>
+<li>Check the radio button for <strong>SOCKS v5</strong></li>
+<li>Check the box for <strong>Proxy DNS when using SOCKS v5</strong></li>
+<li>Press <strong>OK</strong> to save your settings</li>
+</ol>
+
+<p><img src="images/v2tor-5.png" alt="Firefox configuration for manual proxy"></p>
+
+<h2 id="h2-14">14. Initial Tests</h2>
+
+<p>1. Check that everything is working by visiting in Firefox:</p>
+
+<p><a href="https://www.iplocation.net" target="_blank">https://www.iplocation.net</a></p>
+
+<p>You should see the IP address and location of your V2Ray server.</p>
+
+<p>2. Shut down V2RayN by right-clicking on its icon in the system tray and selecting the quit option (<strong>退出</strong>). Set Firefox back to <strong>Use system proxy settings</strong>. Check that your website (<code>https://www.v2tor.cf</code> in our example) still appears to be a normal website.</p>
+
+<p>If you stop at this point, you will have a fully functioning V2Ray server without the final output to Tor.</p>
+
+<h2 id="h2-15">15. Install Tor</h2>
+
+<p>We will now route traffic on the server from V2Ray to Tor. First, install the prerequisite for Tor:</p>
+
+<p class="terminal"><code>apt install apt-transport-https</code></p>
+
+<p>Now edit your package sources list:</p>
+
+<p class="terminal"><code>vi /etc/apt/sources.list</code></p>
+
+<p>Add the two entries:</p>
+
+<p class="terminal"><code>deb https://deb.torproject.org/torproject.org buster main<br>
+deb-src https://deb.torproject.org/torproject.org buster main</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Then add the GPG key used to sign the packages by running the following commands:</p>
+
+<p class="terminal"><code>apt install gpg</code></p>
+
+<p class="terminal"><code>curl https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc | gpg --import</code></p>
+
+<p class="terminal"><code>gpg --export A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89 | apt-key add -</code></p>
+
+<p>Install Tor:</p>
+
+<p class="terminal"><code>apt update<p class="terminal"></code></p>
+
+<p class="terminal"><code>apt install tor deb.torproject.org-keyring<p class="terminal"></code></p>
+
+<p>Tor is now listening for SOCKS input on port <code>9050</code>.</p>
+
+<h2 id="h2-16">16. Route V2Ray to Tor</h2>
+
+<p>Finally, we reconfigure V2Ray so that instead of outputting traffic directly, it sends it to the SOCKS proxy on port 9050, which is Tor.</p>
+
+<p>Edit the V2Ray configuration file.</p>
+
+<p class="terminal"><code>vi /etc/v2ray/config.json</code></p>
+
+<p>Delete the 2 lines for outbound protocol <code>freedom</code>.</p>
+
+<p>Insert lines for outbound to Tor localhost socks port 9050:</p>
+
+<p class="terminal"><code>"protocol": "socks",<br>
+"settings": {<br>
+  "servers": [{<br>
+    "address": "127.0.0.1",<br>
+    "port": 9050,<br>
+    "auth": "noauth"<br>
+    }]<br>
+  }</code></p>
+  
+<p><img src="images/v2tor-6.png" alt="V2Ray configuration with SOCKS outbound"></p>
+  
+Write the file to disk. Quit the editor. 
+
+Restart V2Ray on the server:
+
+<p class="terminal"><code>systemctl restart v2ray</code></p>
+
+<p>Your work on the server is now complete:</p>
+
+<p class="terminal"><code>exit</code></p>
+
+<h2 id="h2-16">17. End-to-End Test</h2>
+
+<p>With V2RayN running on your Windows client, open Firefox, and make sure it is configured to use your V2RayN proxy. Then in Firefox visit:</p>
+
+<p><a href="https://check.torproject.org/" target="_blank">https://check.torproject.org/</a></p>
+
+<p>You should see a message confirming that you are using the Tor network, even if you are not using the Tor browser.</p>
+
+<p><img src="images/v2tor-7.png" alt="This browser is configured to use Tor"></p>
+
+</div>
+
+</body>
+</html>
