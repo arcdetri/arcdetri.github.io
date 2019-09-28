@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NaiveProxy on Debian 10 Server and Windows Client</title>
+<meta name="description" content="How to install and configure Caddy and NaiveProxy on a Debian 10 server with a Windows client">
+<meta name="keywords" content="naiveproxy,caddy,debian,windows">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+<div id="header">
+<p><a href="/">Technical Blog</a></p>
+</div>
+
+<div>
+
+<p><em>September 29, 2019</em></p>
+
+<h1>NaiveProxy on Debian 10 Server and Windows Client</h1>
+
+<h2 id="h2-0">0. Introduction</h2>
+
+<p>NaiveProxy is a censorship-resistance tool that mitigates the risks of traffic fingerprinting, active probing, and packet-length analysis. This post shows you how to install and configure NaiveProxy on a Debian 10 server with a Windows client.</p>
+
+<h2 id="h2-1">1. Create Domain Name and VPS</h2>
+
+<p>Start by registering a domain name. We will use a free name from <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, and the example domain name used in the rest of this post will be <code>philo.cf</code>.</p>
+
+<p>Obtain a Debian 10 virtual private server (VPS). Some popular providers are Bandwagon Host (搬瓦工) and Google Cloud Platform (GCP), but you can use a different VPS provider if you prefer.</p>
+
+<p>Note down the server's IP address. We will use as an example the IP address <code>188.188.188.188</code>.</p>
+
+<p>Back at your domain name registrar, which for us is <a href="https://www.freenom.com" target="_blank">https://www.freenom.com</a>, add a DNS A record pointing from your server host name (e.g. <code>www</code>, type <code>A</code>, time-to-live <code>3600</code> seconds) to your server IP address (e.g. <code>188.188.188.188</code>). Save these changes.</p>
+
+<p><img src="images/naive-1.png" alt="Freenom DNS management record added successfully"></p>
+
+<h2 id="h2-2">2. Tune Server</h2>
+
+<p>SSH into your server from a terminal emulator (from Linux or macOS) or a tool such as PuTTY, NetSarang XSHELL, or PowerShell (from Windows). If your DNS records have had time to propagate, you can use the server's hostname. For example:</p>
+
+<p class="terminal"><code>ssh root@www.philo.cf</code></p>
+
+<p>Otherwise, you must use the server's IP address. For example:</p>
+
+<p class="terminal"><code>ssh root@188.188.188.188</code></p>
+
+<p>Start by getting your server's existing software packages up to date:</p>
+
+<p class="terminal"><code>apt update</code></p>
+
+<p class="terminal"><code>apt upgrade</code></p>
+
+<p>Change the password to something only you know:</p>
+
+<p class="terminal"><code>passwd root</code></p>
+
+<p>The Bottleneck Bandwidth and Round-trip propagation time (BBR) congestion control algorithm tracks a connection's delivery rate and round-trip time to offer higher throughput and lower queueing delays where there are network bottlenecks. BBR has been supported by Linux since kernel version 4.9. Since Debian 10 is based on Linux kernel 4.19, we can use it here. Create a local system control parameters file:</p>
+
+<p class="terminal"><code>vi /etc/sysctl.d/local.conf</code></p>
+
+<p>Press the <strong>i</strong> key on your computer keyboard to enter insert mode. Insert the lines that specify the BBR congestion control algorithm:</p>
+
+<p class="terminal"><code>net.core.default_qdisc=fq<br>
+net.ipv4.tcp_congestion_control=bbr</code></p>
+
+<p>Also add lines to increase the maximum number of open files, the buffer sizes, and so on:</p>
+
+<p class="terminal"><code>fs.file-max = 51200<br>
+net.core.rmem_max = 67108864<br>
+net.core.wmem_max = 67108864<br>
+net.core.rmem_default = 65536<br>
+net.core.wmem_default = 65536<br>
+net.core.netdev_max_backlog = 4096<br>
+net.core.somaxconn = 4096<br>
+<br>
+net.ipv4.tcp_syncookies = 1<br>
+net.ipv4.tcp_tw_reuse = 1<br>
+net.ipv4.tcp_fin_timeout = 30<br>
+net.ipv4.tcp_keepalive_time = 1200<br>
+net.ipv4.ip_local_port_range = 10000 65000<br>
+net.ipv4.tcp_max_syn_backlog = 4096<br>
+net.ipv4.tcp_max_tw_buckets = 5000<br>
+net.ipv4.tcp_fastopen = 3<br>
+net.ipv4.tcp_rmem = 4096 87380 67108864<br>
+net.ipv4.tcp_wmem = 4096 65536 67108864<br>
+net.ipv4.tcp_mtu_probing = 1</code></p>
+
+<p>Press the <strong>Esc</strong> key on your computer keyboard followed by <code>:wq</code> to write the file to disk and quit the editor. Activate these changes:</p>
+
+<p class="terminal"><code>sysctl -p /etc/sysctl.d/local.conf</code></p>
+
+<p>Edit security limits configuration file:</p>
+
+<p class="terminal"><code>vi /etc/security/limits.conf</code></p>
+
+<p>Before the end of file, add lines to increase limits on number of files to 51200:
+
+<p class="terminal"><code>* soft nofile 51200<br>
+* hard nofile 51200</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Set current limit on number of files to 51200 by issuing the command:</p>
+
+<p class="terminal"><code>ulimit -SHn 51200</code></p>
+
+<p>Edit the permanent profile:</p>
+
+<p class="terminal"><code>vi /etc/profile</code></p>
+
+<p>Add a line to set the permanent limit on number of files to 51200:</p>
+
+<p class="terminal"><code>ulimit -SHn 51200</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>If your VPS hostname is not yet set to your chosen hostname, then set it now:</p>
+
+<p class="terminal"><code>hostnamectl set-hostname www.philo.cf</code></p>
+
+<p>Add the actual hostname to your <code>/etc/hosts</code> file.</p>
+
+<p class="terminal"><code>vi /etc/hosts</code></p>
+
+<p>Add a new line:</p>
+
+<p class="terminal"><code>127.0.0.1 www.philo.cf</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Reboot to make the hostname change effective:</p>
+
+<p class="terminal"><code>reboot</code></p>
+
+<p>You may need to wait several minutes for the server to fully reboot, otherwise you will get a <code>Connection refused</code> message. When the reboot is complete, log on to your server again:</p>
+
+<p class="terminal"><code>ssh root@www.philo.cf</code></p>
+
+<p>Verify that your tuning changes have persisted across reboots:</p>
+
+<p class="terminal"><code>hostname</code></p>
+<p class="terminal"><code>sysctl net.ipv4.tcp_congestion_control</code></p>
+
+<h2 id="h2-3">3. Configure Firewall</h2>
+
+<p>Enable and start nftables:
+
+<p class="terminal"><code>apt install nftables<br>
+systemctl enable nftables<br>
+systemctl start nftables</code></p>
+
+List the current nftables rules:
+
+<p class="terminal"><code>nft list ruleset</code></p>
+
+<p>You should see a table for inet filter, plus chains within it for input, forward, and output. If this table and its chains do not exist, then create them.</p>
+
+<p>Add a rule to accept all related and established traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input ct state related,established counter accept</code></p>
+
+<p>Add a rule to accept  all loopback interface traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input iif lo counter accept</code></p>
+
+<p>Whitelist your own IP address for access to SSH. You will need to substitute in the actual public IP address of your workstation. You can get your workstation's public IP address by opening a browser and visiting a site such as <a href="https://whatismyipaddress.com" target="_blank">https://whatismyipaddress.com</a> or <a href="https://www.ipip.net/ip.html" target="_blank">https://www.ipip.net/ip.html</a>. The command below uses an example workstation IP address of <code>11.22.33.44</code>, which is represented in classless interdomain routing (CIDR) notation as <code>11.22.33.44/32</code>. If you do not have a fixed IP address, but your IP address always comes from a certain block, you can substitute a CIDR range such as <code>11.22.00.00/16</code>. In some cloud providers, you must also open port 22 in the VPS's Security Group.</p>
+
+<p class="terminal"><code>nft add rule inet filter input tcp dport 22 ip saddr 11.22.33.44/32 counter accept</code></p>
+
+<p>Also accept HTTP and HTTPS traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input tcp dport {80, 443} counter accept</code></p>
+
+<p>Drop any unexpected traffic:</p>
+
+<p class="terminal"><code>nft add rule inet filter input counter drop</code></p>
+
+<p>Check that the rules now look as expected:</p>
+
+<p class="terminal"><code>nft list ruleset</code></p>
+
+<p>To persist these changes across reboots, save your rules to /etc/nftables.conf:</p>
+
+<p class="terminal"><code>nft list ruleset > /etc/nftables.conf</code></p>
+
+<h2 id="h2-4">4. Install Caddy</h2>
+
+<p>We are going to use Caddy for our web server. We opened the firewall for HTTP and HTTPS in the preceding step. Now install the Caddy web server, together with the http.forwardproxy plugin:</p>
+
+<p class="terminal"><code>apt install curl</code></p>
+
+<p class="terminal"><code>curl https://getcaddy.com | sudo bash -s personal http.forwardproxy</code></p>
+
+<p>Give the Caddy binary the ability to bind to privileged ports as a non-root user:</p>
+
+<p class="terminal"><code>setcap 'cap_net_bind_service=+ep' /usr/local/bin/caddy</code></p>
+
+<p>Install the SystemD service unit file:</p>
+
+<p class="terminal"><code>wget https://raw.githubusercontent.com/mholt/caddy/master/dist/init/linux-systemd/caddy.service<br>
+cp caddy.service /etc/systemd/system/<br>
+systemctl daemon-reload</code></p>
+
+<p>Create the <code>/etc/caddy</code>, <code>/etc/ssl/caddy</code>, and <code>/var/www/html</code> directories:</p>
+
+<p class="terminal"><code>mkdir /etc/caddy</code></p>
+
+<p class="terminal"><code>mkdir /etc/ssl/caddy<br>
+chown -R root:www-data /etc/ssl/caddy<br>
+chmod 0770 /etc/ssl/caddy</code></p>
+
+<p class="terminal"><code>mkdir -p /var/www/html</code></p>
+
+<h2 id="h2-5">5. Generate Password</h2>
+
+<p>Configuring Caddy as a forward proxy requires a userid and password. You can generate a password with the command:</p>
+
+<p class="terminal"><code>head /dev/urandom | tr -dc a-z0-9 | head -c 16 ; echo ''</code></p>
+
+<p>You will get a result such as:</p>
+
+<p class="terminal"><code>xp4ipwzwm41jkqp2</code></p>
+
+<p>We will use <code>xp4ipwzwm41jkqp2</code> as our password for the proxy server.</p>
+
+<h2 id="h2-6">6. Configure Caddy</h2>
+
+<p>Edit the main Caddy configuration file:</p>
+
+<p class="terminal"><code>vi /etc/caddy/Caddyfile</code></p>
+
+<p>In the sample configuration below:</p>
+
+<ul>
+<li>Replace <code>www.philo.cf</code> by your actual hostname</li>
+<li>Replace <code>arcdetri@example.com</code> by your own email address</li>
+<li>Replace <code>arcdetri</code> by your choice of userid for the proxy server</li>
+<li>Replace <code>xp4ipwzwm41jkqp2</code> by your choice of password for the proxy server</li>
+</ul>
+
+<p>Here is the sample for you to modify:</p>
+
+<p class="terminal"><code>www.philo.cf<br>
+root /var/www/html<br>
+tls arcdetri@example.com<br>
+forwardproxy {<br>
+  basicauth arcdetri xp4ipwzwm41jkqp2<br>
+  hide_ip<br>
+  hide_via<br>
+  probe_resistance<br>
+  upstream http://127.0.0.1:8080<br>
+}</code></p>
+
+<p>When you have finished editing the configuration file, write the file to disk and quit the editor.</p>
+
+<p><img src="images/naive-2.png" alt="Caddyfile with probe resistance"></p>
+
+<h2 id="h2-7">7. Start Caddy</h2>
+
+<p>Start Caddy:</p>
+
+<p class="terminal"><code>systemctl enable caddy<br>
+systemctl start caddy</code></p>
+
+<p>Verify that the service is running with the following command:</p>
+
+<p class="terminal"><code>systemctl status caddy</code></p>
+
+<p>You should see a status of <code>active (running)</code>.</p>
+
+<h2 id="h2-8">8. Add Web Content</h2>
+
+<p>Now create your web site content in the <code>/var/www/html</code> directory. For the sake of this post, we will use some sample content:</p>
+
+<p class="terminal"><code>apt install zip unzip</code></p>
+<p class="terminal"><code>wget https://github.com/arcdetri/sample-blog/archive/master.zip</code></p>
+<p class="terminal"><code>unzip master.zip</code></p>
+<p class="terminal"><code>cp -rf sample-blog-master/html/* /var/www/html/</code></p>
+
+<p>When you have added your content, you can open a browser and visit the HTTPS version of your website to confirm that Caddy is working. In our example, this would be:</p>
+
+<p class="terminal"><code>https://www.philo.cf</code></p>
+
+<h2 id="h2-9">9. Install NaiveProxy</h2>
+
+<p>Install the dependency:</p>
+
+<p class="terminal"><code>apt install libnss3</code></p>
+
+<p>Determine the latest release by opening a browser on your workstation and visiting <a href="https://github.com/klzgrad/naiveproxy/releases" target="_blank">https://github.com/klzgrad/naiveproxy/releases</a>. At the time of writing, the latest download for Linux is named <code>naiveproxy-v77.0.3865.90-1-linux.tar.xz</code>.</p>
+
+<p>On your server, download the latest release:</p>
+
+<p class="terminal"><code>wget https://github.com/klzgrad/naiveproxy/releases/download/v77.0.3865.90-1/naiveproxy-v77.0.3865.90-1-linux.tar.xz</code></p>
+
+<p>Extract the archive:</p>
+
+<p class="terminal"><code>apt install xz-utils<br>
+tar -xvf naiveproxy-v77.0.3865.90-1-linux.tar.xz</code></p>
+
+<p>Change into the extracted directory:</p>
+
+<p class="terminal"><code>cd naiveproxy-v77.0.3865.90-1-linux</code></p>
+
+<p>Copy the binary into place:</p>
+
+<p class="terminal"><code>cp naive /usr/local/bin</code></p>
+
+<p>Create the SystemD service unit file:</p>
+
+<p class="terminal"><code>vi /etc/systemd/system/naive.service</code></p>
+
+<p>Insert contents as follows:</p>
+
+<p class="terminal"><code>[Unit]<br>
+Description=NaiveProxy Server Service<br>
+After=network-online.target<br>
+<br>
+[Service]<br>
+Type=simple<br>
+User=nobody<br>
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE<br>
+ExecStart=/usr/local/bin/naive /etc/naive/config.json<br>
+<br>
+[Install]<br>
+WantedBy=multi-user.target</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<p>Reload SystemD configuration:</p>
+
+<p class="terminal"><code>systemctl daemon-reload</code></p>
+
+<h2 id="h2-10">10. Configure NaiveProxy</h2>
+
+<p>Edit the NaiveProxy configuration file:</p>
+
+<p class="terminal"><code>mkdir /etc/naive<br>
+vi /etc/naive/config.json</code></p>
+
+<p>On the server, the configuration should listen on localhost port 8080, which is where Caddy will pass authenticated traffic:</p>
+
+<p class="terminal"><code>{<br>
+  "listen": "http://127.0.0.1:8080",<br>
+  "padding": true<br>
+}</code></p>
+
+<p>Write the file to disk, and quit the editor.</p>
+
+<h2 id="h2-11">11. Start NaiveProxy</h2>
+
+<p>Start NaiveProxy:</p>
+
+<p class="terminal"><code>systemctl enable naive<br>
+systemctl start naive</code></p>
+
+<p>Verify that the service is running with the following command:</p>
+
+<p class="terminal"><code>systemctl status naive</code></p>
+
+<p>You should see a status of <code>active (running)</code>.</p>
+
+<h2 id="h2-12">12. Install NaiveProxy on Windows Client</h2>
+
+<p>Download and install the latest release of NaiveProxy for Windows from <a href="https://github.com/klzgrad/naiveproxy/releases/" target="_blank">https://github.com/klzgrad/naiveproxy/releases/</a>. At the time of writing, it is named <code>naiveproxy-v77.0.3865.90-1-win-x64.zip.</code>.</p>
+
+<p>Extract files from the downloaded <code>naiveproxy-v77.0.3865.90-1-win-x64.zip</code> file.</p>
+
+<p>Go into the <code>naiveproxy-v77.0.3865.90-1-win-x64</code> folder.</p>
+
+<p>Edit the <code>config.json</code> file. In the sample configuration below:</p>
+
+<ul>
+<li>Replace <code>arcdetri</code> by your choice of userid for the proxy server</li>
+<li>Replace <code>xp4ipwzwm41jkqp2</code> by your choice of password for the proxy server</li>
+<li>Replace <code>www.philo.cf</code> by your Caddy server's hostname</li>
+</ul>
+
+<p>Here is the sample for you to modify:</p>
+
+<p class="terminal"><code>{<br>
+  "listen": "socks://127.0.0.1:1080",<br>
+  "proxy": "https://arcdetri:xp4ipwzwm41jkqp2@www.philo.cf",<br>
+  "padding": true<br>
+}</code></p>
+
+<p>When you have finished editing, write the file to disk, and quit the editor.</p>
+
+<p>In Windows File Explorer, type <code>cmd</code> in the address bar to open a Windows command prompt. Start NaiveProxy running by entering the command:</p>
+
+<p class="terminal"><code>naive config.json</code></p>
+
+<p>Leave the Windows command prompt open, so that the NaiveProxy client continues to run.</p>
+
+<h2 id="h2-13">13. Configure Firefox on Client</h2>
+
+<p>If you do not already have Firefox, then install it now from <a href="https://www.mozilla.org" target="_blank">https://www.mozilla.org</a>.</p>
+
+<p>Launch Firefox.</p>
+
+<ol>
+<li>From the menu in the top right corner, select <strong>Options</strong></li>
+<li>Scroll down to the bottom, and where you see Network Settings, click <strong>Settings</strong></li>
+<li>Select <strong>Manual proxy configuration</strong></li>
+<li>In SOCKS Host, put <code>127.0.0.1</code></li>
+<li>For Port, put <code>1080</code></li>
+<li>Check the radio button for <strong>SOCKS v5</strong></li>
+<li>Check the box for <strong>Proxy DNS when using SOCKS v5</strong></li>
+<li>Press <strong>OK</strong> to save your settings</li>
+</ol>
+
+<p><img src="images/naive-3.png" alt="Firefox Manual proxy configuration"></p>
+
+<h2 id="h2-14">14. Initial Test</h2>
+
+<p>Check that everything is working by visiting in Firefox:</p>
+
+<p><a href="https://www.iplocation.net" target="_blank">https://www.iplocation.net</a></p>
+
+<p>You should see the IP address and location of your NaiveProxy server.</p>
+
+<p>To turn off proxying, do <strong>Ctrl</strong>+<strong>c</strong> and close the Windows commmand prompt window where NaiveProxy is running, and set Firefox back to <strong>Use system proxy settings</strong>.</p>
+
+</div>
+
+</body>
+</html>
